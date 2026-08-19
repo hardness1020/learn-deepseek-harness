@@ -175,7 +175,7 @@ def check_every_failure_is_a_result():
     assert [m.call_id for m in tool_messages] == ["c1", "c2", "c3", "c4"]
 
 
-ASK_SCRIPT = [
+ONE_CALL_SCRIPT = [
     {
         "text": "",
         "tool_calls": [{"id": "c1", "name": "lookup", "args": {"key": "wifi"}}],
@@ -186,7 +186,7 @@ ASK_SCRIPT = [
 
 def check_ask():
     """Votes only tighten, and an ask with no approver fails closed."""
-    ctx, tools, session, agent = build(list(ASK_SCRIPT))
+    ctx, tools, session, agent = build(list(ONE_CALL_SCRIPT))
     tools.register(lookup_tool())
     tools.pre(lambda call: "allow")  # a loose vote cannot loosen...
     tools.pre(lambda call: "ask")  # ...a tighter one
@@ -196,7 +196,7 @@ def check_ask():
     assert result["content"] == "approval was asked and not given"
 
     # Same script, but now someone answers the ask.
-    ctx, tools, session, agent = build(list(ASK_SCRIPT))
+    ctx, tools, session, agent = build(list(ONE_CALL_SCRIPT))
     tools.register(lookup_tool())
     tools.pre(lambda call: "ask")
     tools.asker = lambda call: True
@@ -208,7 +208,7 @@ def check_ask():
 
 def check_post_review():
     """Post hooks review every result on its way to the log."""
-    ctx, tools, session, agent = build(list(ASK_SCRIPT))
+    ctx, tools, session, agent = build(list(ONE_CALL_SCRIPT))
     tools.register(lookup_tool())
     tools.post(
         lambda call, result: dict(result, content="[redacted]")

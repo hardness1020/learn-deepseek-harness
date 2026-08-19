@@ -15,7 +15,7 @@ stopped.
 class Agent:
     """Drives one session through the Model seam, one turn at a time."""
 
-    def __init__(self, session, model, tools=None):
+    def __init__(self, session, model, tools):
         self.session = session
         self.model = model
         self.tools = tools  # this agent's scoped view of the tool registry
@@ -39,7 +39,7 @@ class Agent:
         """One step: re-derive history, one model call, run its tool calls."""
         self.session.append("step/start", {})
         messages = self.session.derive_messages()  # re-derived, never cached
-        schemas = self.tools.schemas() if self.tools else []
+        schemas = self.tools.schemas()
         self.session.append(
             "request/header",
             {"messages": len(messages), "tools": [s["name"] for s in schemas]},
@@ -57,8 +57,6 @@ class Agent:
         if not final.tool_calls:
             self.session.append("step/end", {"reason": "completed"})
             return "completed"
-        if self.tools is None:
-            raise RuntimeError("the model called tools but this agent has none")
         for call in final.tool_calls:
             self.session.append("tool/call", call)  # log-only: before dispatch
             result = self.tools.execute(call)
@@ -73,7 +71,7 @@ class AgentRegistry:
     def __init__(self):
         self.agents = {}
 
-    def create(self, agent_id, session, model, tools=None):
+    def create(self, agent_id, session, model, tools):
         if agent_id in self.agents:
             raise ValueError(f"agent '{agent_id}' already exists")
         agent = Agent(session, model, tools)

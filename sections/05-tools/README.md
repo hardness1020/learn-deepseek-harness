@@ -4,8 +4,8 @@
 > result. Even a call that never ran gets one.
 
 Section 04's loop can only talk. Every step ends `"completed"` because the
-model has nothing to do but reply. Tools change that: the model asks the
-harness to run something and needs the outcome back before it can go on.
+model has nothing to do but reply. Tools change that: the model asks
+mini-dsh to run something and needs the outcome back before it can go on.
 
 The obvious build is a dict of functions. Look up the name, call it, append
 what it returns. If the name is unknown, raise. If the arguments are bad,
@@ -174,8 +174,9 @@ Compared with section 04:
   so tool-using turns are scriptable offline.
 - `session_log.py`: `derive_messages()` thaws `tool_calls` and `call_id`
   from frozen payloads back onto Messages. `SURFACE_TYPES` is untouched.
-- `agent_loop.py`: the step offers schemas with the request, records them in
-  `request/header`, runs calls through the pipeline, and fills in the
+- `agent_loop.py`: the Agent now takes its `ToolScope` alongside the session
+  and the Model seam; the step offers schemas with the request, records them
+  in `request/header`, runs calls through the pipeline, and fills in the
   `reason None` arm section 04 left as a socket.
 - `demo.py`: the Live demo now does real tool use, including a guard denial
   the model has to read and explain.
@@ -236,8 +237,8 @@ What the real tools layer adds on top of this section's Mechanism:
   floor and the model waits forever or reissues it forever. `is_error` plus
   a reason is information: the check's model reads four different failures
   in one step and still finishes the turn.
-- **An ask with no approver must deny.** Defaulting to allow means an
-  unconfigured harness is the most permissive one. The gate fails closed,
+- **An ask with no approver must deny.** Defaulting to allow would make an
+  unconfigured mini-dsh the most permissive one. The gate fails closed,
   and the check proves the same call runs once someone answers.
 - **Guards that could approve would fight.** Deny-only guards are monotonic:
   any guard can only shrink what runs, so their order never matters. A guard
