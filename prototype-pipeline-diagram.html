@@ -1,0 +1,233 @@
+<!doctype html>
+<!-- PROTOTYPE (wayfinder ticket #9) — throwaway, do not merge.
+     Three variants of the root README phase-pipeline diagram, switchable via the
+     bottom bar or arrow keys. Theme toggle simulates GitHub light/dark. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE: pipeline diagram variants</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0;
+    --code-bg:#f6f8fa; --accent:#0969da;
+    --ph1:#0969da; --ph2:#8250df; --ph3:#1a7f37; --ph4:#bc4c00;
+    --chip-bg:#f6f8fa;
+  }
+  body.dark {
+    --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --border:#30363d;
+    --code-bg:#161b22; --accent:#4493f8;
+    --ph1:#4493f8; --ph2:#ab7df8; --ph3:#3fb950; --ph4:#f0883e;
+    --chip-bg:#161b22;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;
+    font-size:16px; line-height:1.5;
+  }
+  .readme { max-width:900px; margin:0 auto; padding:32px 32px 140px; }
+  .center { text-align:center; }
+  h1 { font-size:2em; border:0; margin:0.3em 0 0.2em; }
+  h2 { font-size:1.5em; border-bottom:1px solid var(--border); padding-bottom:.3em; margin-top:1.5em; }
+  .tagline { color:var(--muted); margin:0 0 8px; }
+  .badges img { vertical-align:middle; }
+  a { color:var(--accent); text-decoration:none; }
+  blockquote { margin:16px 0; padding:0 1em; color:var(--muted); border-left:.25em solid var(--border); }
+  pre.textdiagram {
+    background:var(--code-bg); border-radius:6px; padding:16px; overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    font-size:12.5px; line-height:1.45;
+  }
+  .caption { font-size:13px; color:var(--muted); border-top:1px dashed var(--border); margin-top:14px; padding-top:8px; }
+  .variant { display:none; }
+  .variant.active { display:block; }
+  .mermaid { display:flex; justify-content:center; }
+  svg.pipeline { max-width:100%; height:auto; display:block; margin:0 auto; }
+  svg.pipeline text { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; fill:var(--fg); }
+  svg.pipeline .phasebox { fill:var(--code-bg); stroke:var(--border); }
+  svg.pipeline .phasename { font-weight:600; font-size:14px; }
+  svg.pipeline .chip { fill:var(--bg); stroke:var(--border); }
+  svg.pipeline .chiptext { font-size:11.5px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  svg.pipeline .arrow { stroke:var(--muted); fill:none; stroke-width:1.5; }
+  svg.pipeline .arrowhead { fill:var(--muted); }
+  /* switcher — obviously not part of the design under review */
+  #bar {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:#24292f; color:#fff; border-radius:999px; padding:8px 14px;
+    display:flex; align-items:center; gap:10px; box-shadow:0 4px 16px rgba(0,0,0,.35);
+    font-size:14px; z-index:10; white-space:nowrap;
+  }
+  #bar button {
+    background:none; border:0; color:#fff; font-size:16px; cursor:pointer; padding:2px 6px;
+  }
+  #bar button:hover { background:rgba(255,255,255,.15); border-radius:6px; }
+  #bar .lbl { min-width:270px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="readme">
+
+  <div class="center">
+    <h1>learn-deepseek-harness</h1>
+    <p class="tagline">Rebuild a minimal DeepSeek Harness in stdlib Python, one mechanism at a time.</p>
+    <p class="badges">
+      <img alt="Studied: dsh 0.1.0-rc.7" src="https://img.shields.io/badge/studied-dsh_0.1.0--rc.7-blue">
+      <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
+    </p>
+  </div>
+
+  <p>A build-it-yourself tutorial on <a href="#">deepseek-harness</a> (<code>dsh</code>): the reader
+  rebuilds a mini-dsh in zero-dependency stdlib Python, with the real system as the reference.</p>
+
+  <h2>Big picture</h2>
+
+  <!-- ======== VARIANT A: text block (status quo) ======== -->
+  <div class="variant" id="v-a">
+<pre class="textdiagram">
+┌─ Foundation ─────┐    ┌─ The Loop ────────┐    ┌─ Capabilities ───────┐    ┌─ Composition ──┐
+│ 00 setup         │    │ 04 agent-loop     │    │ 10 capability-seams  │    │ 13 composition │
+│ 01 kernel        │ ─▶ │ 05 tools          │ ─▶ │ 11 jobs              │ ─▶ │                │
+│ 02 session-log   │    │ 06 scheduler      │    │ 12 subagent          │    │                │
+│ 03 compaction    │    │ 07 inbox          │    │                      │    │                │
+│                  │    │ 08 system-prompt  │    │                      │    │                │
+│                  │    │ 09 skills         │    │                      │    │                │
+└──────────────────┘    └───────────────────┘    └──────────────────────┘    └────────────────┘
+</pre>
+    <p class="caption"><b>A — Text block (status quo).</b> Tooling: none. Renders everywhere,
+    diffs cleanly, both themes free. Ceiling: monospace boxes only, wide diagrams overflow on
+    mobile, no color or emphasis.</p>
+  </div>
+
+  <!-- ======== VARIANT B: mermaid ======== -->
+  <div class="variant" id="v-b">
+    <div id="mermaid-slot"></div>
+    <p class="caption"><b>B — Mermaid.</b> Tooling: a fenced code block; GitHub renders it natively
+    and matches the viewer's theme automatically. Diffs as text, zero committed assets. Ceiling:
+    layout is auto, exact placement and styling limited; GitHub's renderer decides the final look
+    (this CDN render approximates it).</p>
+  </div>
+
+  <!-- ======== VARIANT C: hand-authored SVG ======== -->
+  <div class="variant" id="v-c">
+    <svg class="pipeline" viewBox="0 0 880 240" role="img" aria-label="Phase pipeline">
+      <!-- Foundation -->
+      <rect class="phasebox" x="0" y="16" width="180" height="150" rx="8"/>
+      <rect x="0" y="16" width="180" height="5" rx="2.5" fill="var(--ph1)"/>
+      <text class="phasename" x="90" y="44" text-anchor="middle">Foundation</text>
+      <g>
+        <rect class="chip" x="14" y="56"  width="152" height="22" rx="11"/><text class="chiptext" x="24" y="71">00 setup</text>
+        <rect class="chip" x="14" y="83"  width="152" height="22" rx="11"/><text class="chiptext" x="24" y="98">01 kernel</text>
+        <rect class="chip" x="14" y="110" width="152" height="22" rx="11"/><text class="chiptext" x="24" y="125">02 session-log</text>
+        <rect class="chip" x="14" y="137" width="152" height="22" rx="11"/><text class="chiptext" x="24" y="152">03 compaction</text>
+      </g>
+      <!-- The Loop -->
+      <rect class="phasebox" x="230" y="16" width="190" height="210" rx="8"/>
+      <rect x="230" y="16" width="190" height="5" rx="2.5" fill="var(--ph2)"/>
+      <text class="phasename" x="325" y="44" text-anchor="middle">The Loop</text>
+      <g>
+        <rect class="chip" x="244" y="56"  width="162" height="22" rx="11"/><text class="chiptext" x="254" y="71">04 agent-loop</text>
+        <rect class="chip" x="244" y="83"  width="162" height="22" rx="11"/><text class="chiptext" x="254" y="98">05 tools</text>
+        <rect class="chip" x="244" y="110" width="162" height="22" rx="11"/><text class="chiptext" x="254" y="125">06 scheduler</text>
+        <rect class="chip" x="244" y="137" width="162" height="22" rx="11"/><text class="chiptext" x="254" y="152">07 inbox</text>
+        <rect class="chip" x="244" y="164" width="162" height="22" rx="11"/><text class="chiptext" x="254" y="179">08 system-prompt</text>
+        <rect class="chip" x="244" y="191" width="162" height="22" rx="11"/><text class="chiptext" x="254" y="206">09 skills</text>
+      </g>
+      <!-- Capabilities -->
+      <rect class="phasebox" x="470" y="16" width="200" height="150" rx="8"/>
+      <rect x="470" y="16" width="200" height="5" rx="2.5" fill="var(--ph3)"/>
+      <text class="phasename" x="570" y="44" text-anchor="middle">Capabilities</text>
+      <g>
+        <rect class="chip" x="484" y="56"  width="172" height="22" rx="11"/><text class="chiptext" x="494" y="71">10 capability-seams</text>
+        <rect class="chip" x="484" y="83"  width="172" height="22" rx="11"/><text class="chiptext" x="494" y="98">11 jobs</text>
+        <rect class="chip" x="484" y="110" width="172" height="22" rx="11"/><text class="chiptext" x="494" y="125">12 subagent</text>
+      </g>
+      <!-- Composition -->
+      <rect class="phasebox" x="720" y="16" width="160" height="150" rx="8"/>
+      <rect x="720" y="16" width="160" height="5" rx="2.5" fill="var(--ph4)"/>
+      <text class="phasename" x="800" y="44" text-anchor="middle">Composition</text>
+      <rect class="chip" x="734" y="56" width="132" height="22" rx="11"/><text class="chiptext" x="744" y="71">13 composition</text>
+      <!-- arrows -->
+      <g>
+        <line class="arrow" x1="184" y1="91" x2="222" y2="91"/><path class="arrowhead" d="M222,86 l8,5 -8,5 z"/>
+        <line class="arrow" x1="424" y1="91" x2="462" y2="91"/><path class="arrowhead" d="M462,86 l8,5 -8,5 z"/>
+        <line class="arrow" x1="674" y1="91" x2="712" y2="91"/><path class="arrowhead" d="M712,86 l8,5 -8,5 z"/>
+      </g>
+    </svg>
+    <p class="caption"><b>C — Hand-authored SVG.</b> Tooling: SVG written by hand (agent-writable,
+    text-diffable), committed under <code>assets/</code>, shipped as light+dark pair via
+    <code>&lt;picture&gt;</code> (this inline render uses CSS vars to preview both). Full layout
+    and color control, crisp at any size. Ceiling: every edit is manual coordinate work; two files
+    per diagram to keep in sync.</p>
+  </div>
+
+  <blockquote><b>Everything is a plugin, and every registration is reversible.</b></blockquote>
+
+  <h2>How to learn</h2>
+  <p>Each section is a 4-part lens: Opening, Mechanism, In real dsh, Failure modes. Read in order,
+  run the offline checks, diff adjacent <code>src/</code> …</p>
+
+</div>
+
+<div id="bar">
+  <button id="prev" title="previous (←)">←</button>
+  <span class="lbl" id="lbl"></span>
+  <button id="next" title="next (→)">→</button>
+  <button id="theme" title="toggle GitHub light/dark">◐</button>
+</div>
+
+<script>
+const variants = [
+  ['a','A — Text block (status quo)'],
+  ['b','B — Mermaid'],
+  ['c','C — Hand-authored SVG'],
+];
+const MERMAID_SRC = `flowchart LR
+  subgraph F[Foundation]
+    direction TB
+    s00[00 setup] --> s01[01 kernel] --> s02[02 session-log] --> s03[03 compaction]
+  end
+  subgraph L[The Loop]
+    direction TB
+    s04[04 agent-loop] --> s05[05 tools] --> s06[06 scheduler] --> s07[07 inbox] --> s08[08 system-prompt] --> s09[09 skills]
+  end
+  subgraph C[Capabilities]
+    direction TB
+    s10[10 capability-seams] --> s11[11 jobs] --> s12[12 subagent]
+  end
+  subgraph X[Composition]
+    s13[13 composition]
+  end
+  F --> L --> C --> X`;
+
+let idx = Math.max(0, variants.findIndex(v => v[0] === (location.hash.replace('#','') || 'a')));
+function show() {
+  document.querySelectorAll('.variant').forEach(el => el.classList.remove('active'));
+  const [key, name] = variants[idx];
+  document.getElementById('v-' + key).classList.add('active');
+  document.getElementById('lbl').textContent = name;
+  location.hash = key;
+  if (key === 'b') renderMermaid();
+}
+function renderMermaid() {
+  const slot = document.getElementById('mermaid-slot');
+  if (typeof mermaid === 'undefined') {
+    slot.innerHTML = '<pre class="textdiagram">mermaid CDN failed to load — this variant needs network access.</pre>';
+    return;
+  }
+  slot.innerHTML = '<pre class="mermaid">' + MERMAID_SRC + '</pre>';
+  mermaid.initialize({ startOnLoad:false, theme: document.body.classList.contains('dark') ? 'dark' : 'default' });
+  mermaid.run({ nodes: slot.querySelectorAll('.mermaid') });
+}
+document.getElementById('prev').onclick = () => { idx = (idx + variants.length - 1) % variants.length; show(); };
+document.getElementById('next').onclick = () => { idx = (idx + 1) % variants.length; show(); };
+document.getElementById('theme').onclick = () => { document.body.classList.toggle('dark'); if (variants[idx][0]==='b') renderMermaid(); };
+document.addEventListener('keydown', e => {
+  if (/input|textarea/i.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+  if (e.key === 'ArrowRight') document.getElementById('next').click();
+});
+show();
+</script>
+</body>
+</html>
