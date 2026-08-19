@@ -5,6 +5,7 @@ import json
 from kernel import Context
 from message import Message
 from session_log import Session, session_log_plugin
+from standin import ScriptedModel
 
 
 def thaw(value):
@@ -12,8 +13,29 @@ def thaw(value):
     return json.loads(json.dumps(value, default=dict))
 
 
+def stream_turn(session, model):
+    """One turn through the Model seam, every chunk and the message appended."""
+    for kind, value in model(session.derive_messages()):
+        if kind == "chunk":
+            session.append("assistant/chunk", {"text": value})
+        else:
+            session.append("assistant/message", {"content": value.content})
+
+
+def build_session(store):
+    """Two streamed exchanges plus a tool result, all through the log."""
+    model = ScriptedModel(["Hello.", "Now this."])
+    session = store.create("s1")
+    session.append("user/message", {"content": "hi"})         # seq 0
+    stream_turn(session, model)                               # seqs 1-3 chunks, 4 message
+    session.append("tool/result", {"content": "42"})          # seq 5
+    session.append("user/message", {"content": "and now?"})   # seq 6
+    stream_turn(session, model)                               # seqs 7-9 chunks, 10 message
+    return session
+
+
 def expect_rejected(session, event_type, payload, surface_op):
-    """A bad surface op must raise and leave the session untouched."""
+    """A bad surface op must raise ValueError and leave the session untouched."""
     rows, surface = len(session.log), list(session.surface)
     try:
         session.append(event_type, payload, surface_op=surface_op)
@@ -24,33 +46,21 @@ def expect_rejected(session, event_type, payload, surface_op):
     assert session.surface == surface, "a rejected append must not touch the surface"
 
 
-def build_session(store):
-    """One short conversation: two exchanges plus a tool result and a chunk."""
-    session = store.create("s1")
-    session.append("user/message", {"content": "hi"})            # seq 0
-    session.append("assistant/chunk", {"text": "He"})            # seq 1, log-only
-    session.append("assistant/message", {"content": "Hello."})   # seq 2
-    session.append("tool/result", {"content": "42"})             # seq 3
-    session.append("user/message", {"content": "and now?"})      # seq 4
-    session.append("assistant/message", {"content": "Now this."})  # seq 5
-    return session
-
-
 def main():
     ctx = Context()
     ctx.plugin(session_log_plugin)
     store = ctx.get("sessions")
 
     session = build_session(store)
-    assert session.surface == [0, 2, 3, 4, 5]
+    assert session.surface == [0, 4, 5, 6, 10]
 
     # Compaction is one append: a summary message whose surface op replaces
-    # the surface entries with seq in [0, 4). The log is never edited.
+    # the surface entries with seq in [0, 6). The log is never edited.
     rows_before = len(session.log)
     summary = session.append(
         "user/message",
         {"content": "Summary: greeted, tool said 42."},
-        surface_op={"op": "replace", "start": 0, "end": 4},
+        surface_op={"op": "replace", "start": 0, "end": 6},
     )
 
     # The model's view shrank to summary + tail.
@@ -59,7 +69,7 @@ def main():
         Message("user", "and now?"),
         Message("assistant", "Now this."),
     ]
-    assert session.surface == [summary["seq"], 4, 5]
+    assert session.surface == [summary["seq"], 6, 10]
 
     # The log removed nothing: every old row still there, frozen, seq intact.
     assert len(session.log) == rows_before + 1
@@ -80,19 +90,25 @@ def main():
     assert replayed.derive_messages() == session.derive_messages()
 
     # Invalid ops are rejected before anything commits.
-    expect_rejected(  # covers no surface entry: seqs 0..3 were already replaced
-        session, "user/message", {"content": "x"}, {"op": "replace", "start": 1, "end": 3}
+    expect_rejected(  # covers no surface entry: seqs 0..5 were already replaced
+        session, "user/message", {"content": "x"}, {"op": "replace", "start": 1, "end": 5}
     )
     expect_rejected(  # a log-only event type cannot join the surface
         session, "assistant/chunk", {"text": "x"}, "append"
     )
-    expect_rejected(  # end is exclusive, so [4, 4) covers nothing
-        session, "user/message", {"content": "x"}, {"op": "replace", "start": 4, "end": 4}
+    expect_rejected(  # end is exclusive, so [6, 6) covers nothing
+        session, "user/message", {"content": "x"}, {"op": "replace", "start": 6, "end": 6}
     )
-    # After compaction the surface is [6, 4, 5]: no longer sorted by seq. A
-    # seq range picking 5 and 6 but not 4 would cut a hole in the middle.
+    expect_rejected(  # an op name the log cannot replay is rejected up front
+        session, "user/message", {"content": "x"}, {"op": "delete", "start": 0, "end": 99}
+    )
+    expect_rejected(  # same for an unknown string op
+        session, "user/message", {"content": "x"}, "prepend"
+    )
+    # After compaction the surface is [11, 6, 10]: no longer sorted by seq. A
+    # seq range picking 10 and 11 but not 6 would cut a hole in the middle.
     expect_rejected(
-        session, "user/message", {"content": "x"}, {"op": "replace", "start": 5, "end": 7}
+        session, "user/message", {"content": "x"}, {"op": "replace", "start": 10, "end": 12}
     )
 
     # Compaction composes: a second replace can cover the first summary too.

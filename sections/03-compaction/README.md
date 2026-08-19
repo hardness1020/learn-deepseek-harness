@@ -13,10 +13,12 @@ or deleting rows would break everything the log promised.
 So: if the log is append-only, how does compaction remove anything the model
 sees?
 
-The answer is already latent in section 02's split. The model never sees the
-log; it sees messages derived from the surface. Compaction is a surface edit,
-not a log edit: one new event, appended like any other, whose surface op
-replaces a run of surface entries with itself.
+Section 02 already built the way out. The model never sees the log; it sees
+messages derived from the surface.
+
+Compaction is therefore a surface edit, not a log edit: one new event,
+appended like any other, whose surface op replaces a run of surface entries
+with itself.
 
 For that to hold, the session log must:
 
@@ -80,6 +82,8 @@ def _surface_after(self, event_type, seq, surface_op):
         raise ValueError(f"'{event_type}' derives no message; it cannot join the surface")
     if surface_op == "append":
         return self.surface + [seq]
+    if not isinstance(surface_op, dict) or surface_op.get("op") != "replace":
+        raise ValueError(f"unknown surface op: {surface_op!r}")
     # {"op": "replace", "start": s, "end": e}: this event shadows the
     # surface entries whose seq falls in [start, end), half-open.
     start, end = surface_op["start"], surface_op["end"]
@@ -122,8 +126,9 @@ Two details carry the weight:
   `Session` from the first one's rows.
 
 One quirk is worth staring at: after a compaction, the surface is no longer
-sorted by seq. In the diagram above it reads `[6, 4, 5]`; the summary sits
+sorted by seq. In the diagram above it reads `[6, 4, 5]`, the summary sitting
 before older seqs, because surface order is conversation order, not log order.
+
 That is why a later replace must cover a contiguous *run of the surface*, and
 why `_surface_after()` rejects a seq range whose covered entries have a hole.
 
@@ -156,7 +161,7 @@ The surface and its ops live in
 | `surface_op` argument: `"append"` or `{"op": "replace", "start", "end"}` | [`packages/core/session/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/types.ts): `SurfaceOp` | `SurfaceOp = 'append' \| { op: 'replace', start, end }`, the exact two-arm shape this section rebuilds. |
 | validate-then-commit in `append()` | [`packages/core/session/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts): `class Session` | `append()` validates (`snapshotJsonValue`), deep-freezes, validates the surface transition, then pushes; compaction rewrites the surface via a `replace` marker without mutating the log. |
 | `_surface_after()` maintaining the surface | [`packages/core/session/src/surface.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/surface.ts): `SurfaceManager` | The real surface is a managed object with its own module; the mini folds it into two methods on `Session`. |
-| summary as a plain `user/message` | [`packages/core/session/src/known-event-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/known-event-types.ts): `compaction/*` | Real dsh gives compaction its own event types, added to `SessionEventMap` by declaration merging and mapped to messages by `deriveEventMessage`. |
+| summary as a plain `user/message` | [`packages/core/session/src/known-event-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/known-event-types.ts): `compaction/*` | Real dsh gives compaction its own event types, added to `SessionEventMap` by declaration merging; they appear among the 45 in-repo event types. |
 
 What the real session log adds on top of this section's Mechanism:
 
@@ -191,11 +196,14 @@ What the real session log adds on top of this section's Mechanism:
   `[6, 4, 5]`, the seq range `[5, 7)` picks 6 and 5 but skips 4: a hole in the
   middle of the run. Committing that would splice the summary over messages it
   never covered, so non-contiguous covers are rejected.
-- **Committing before validating would poison replay.** If `append()` pushed
+- **Committing before validating would break replay.** If `append()` pushed
   the row first and validated after, a failed compaction would leave a logged
   event whose recorded op never took effect, and rebuilding the surface from
   the log would diverge from the live one. Real dsh validates the surface
   transition before pushing for the same reason.
+- **An op the log cannot replay is rejected up front.** `{"op": "delete"}` or
+  `"prepend"` mean nothing to `_surface_after()`; silently accepting one would
+  freeze a record onto the event that no replayer knows how to honor.
 - **A log-only event cannot do the replacing.** An `assistant/chunk` carrying
   a replace op would delete part of the model's view and put nothing readable
   in its place. The op requires a surface type: whatever replaces messages
@@ -216,8 +224,8 @@ What the real session log adds on top of this section's Mechanism:
   validating each transition before it commits.
 - [`test.py`](src/test.py): the derived view shrinks while the log keeps every
   row, ops are on the record, replaying the log rebuilds the surface exactly,
-  invalid ops (empty cover, log-only replacer, exclusive-end edge,
-  non-contiguous run) reject without touching the session, and a second
+  invalid ops (empty cover, log-only replacer, exclusive-end edge, unknown op
+  names, non-contiguous run) reject without touching the session, and a second
   compaction can cover the first.
 
 ```bash
@@ -225,8 +233,9 @@ python sections/03-compaction/src/test.py   # offline checks, no key
 ```
 
 The Mechanism never touches the Model seam: the summary is caller-provided
-data, and the check appends its conversation directly. There is no `demo.py`
-until the loop exists (section 04).
+data. The check drives the Scripted stand-in only to stream a realistic
+conversation into the log before compacting it; there is no `demo.py` until
+the loop exists (section 04).
 
 ---
 

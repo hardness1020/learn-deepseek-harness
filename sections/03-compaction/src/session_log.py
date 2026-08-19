@@ -71,6 +71,8 @@ class Session:
             raise ValueError(f"'{event_type}' derives no message; it cannot join the surface")
         if surface_op == "append":
             return self.surface + [seq]
+        if not isinstance(surface_op, dict) or surface_op.get("op") != "replace":
+            raise ValueError(f"unknown surface op: {surface_op!r}")
         # {"op": "replace", "start": s, "end": e}: this event shadows the
         # surface entries whose seq falls in [start, end), half-open.
         start, end = surface_op["start"], surface_op["end"]
