@@ -62,7 +62,7 @@ def main():
     print("section 04: all checks passed")
 
 
-def headers(session):
+def header_counts(session):
     """Every request/header count, in order: what each step actually sent."""
     return [
         event["payload"]["messages"]
@@ -76,7 +76,7 @@ def check_rederivation():
     session, agent = build(["Hello.", "Now this.", "The summary says 42."])
     agent.send("hi")
     agent.send("and now?")
-    assert headers(session) == [1, 3]
+    assert header_counts(session) == [1, 3]
 
     # Compact everything so far into one summary (section 03's Mechanism).
     session.append(
@@ -88,7 +88,7 @@ def check_rederivation():
     # The next step sends 2 messages (summary + new user), not the 5 a cached
     # list from last turn would still hold. The loop derived, it never stored.
     agent.send("what did we say?")
-    assert headers(session) == [1, 3, 2]
+    assert header_counts(session) == [1, 3, 2]
 
 
 def check_resume():
@@ -137,7 +137,7 @@ def check_crash_mid_step():
     # next step derives both user messages and nothing from the dead step.
     agent.model = ScriptedModel(["Hello again."])
     agent.send("hi again")
-    assert headers(session) == [1, 2]
+    assert header_counts(session) == [1, 2]
     assert session.derive_messages() == [
         Message("user", "hi"),
         Message("user", "hi again"),
@@ -159,7 +159,9 @@ def check_busy_guard():
         assert False, "a mid-turn send must raise"
     except RuntimeError:
         pass
-    assert agent.status == "idle", "the guard must reset after the turn dies"
+    # The refused send never touched the log: no second story interleaved.
+    user_rows = [e["payload"]["content"] for e in session.log if e["type"] == "user/message"]
+    assert user_rows == ["hi"]
 
 
 if __name__ == "__main__":

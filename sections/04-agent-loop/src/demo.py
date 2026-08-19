@@ -2,7 +2,7 @@
 
 The loop does not change: the demo plugs a different callable into the
 Model seam. This file is the only place the SDK and the mini-Message to
-Anthropic translation live (ADR 0001). Scripted turns, no REPL; skips
+Anthropic translation live (ADR 0001). Scripted turns only; skips
 politely when the key or the live-demo deps are missing.
 """
 

@@ -42,8 +42,8 @@ class Agent:
                 self.session.append("assistant/chunk", {"text": value})
             else:
                 self.session.append("assistant/message", {"content": value.content})
-        # ponytail: no tools yet, so every step completes; section 05 adds the
-        # None arm (tool calls ran, go around again).
+        # No tools yet, so every step completes. Section 05 adds the None
+        # arm: tool calls ran, go around again.
         reason = "completed"
         self.session.append("step/end", {"reason": reason})
         return reason

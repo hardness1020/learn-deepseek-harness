@@ -163,13 +163,13 @@ behind the registry in
 | `Agent.send()` and `_step()` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `ReactLoopAgent` | The real driver runs `kick` -> `turn()` -> `preStep()` -> `step()` -> `buildRequest()`; each step re-derives messages from the log and re-assembles the prompt. |
 | `AgentRegistry`, the `agents` service | [`packages/core/agent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/index.ts): `AgentRegistry` | `ctx.agents` holds opaque `Agent` handles; a swappable factory (`setFactory()`), registered by `dsh-agent-loop`, builds the concrete driver. |
 | `status`: `"idle"` or `"running"` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `AgentStatus` | The same two states, on a much wider `Agent` seam interface (`cancel`, `send`, `followup`, `steer`, `inject`). |
-| `turn/start`, `step/start`, `step/end`, `turn/end`, `request/header` rows | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | The durable turn/step vocabulary is session events appended by the driver, exactly as here; the `agent/*` bus carries only lifecycle and interception. |
+| `turn/start`, `step/start`, `step/end`, `turn/end`, `request/header` rows | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | The durable turn/step vocabulary is session events appended by the driver, exactly as here; the `agent/*` bus carries only lifecycle, inbox, and interception points. |
 | the Model seam call in `_step()` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `ctx.llm.prepareCall()` | Real requests go through the llm capability seam and stream back chunk by chunk; the seam itself is section 10's Mechanism. |
 
 What the real agent loop adds on top of this section's Mechanism:
 
-- **A much richer step.** Before streaming, the real `preStep()` claims the
-  inbox, assembles the system prompt, projects runtime context, and runs the
+- **A much richer step.** Before streaming, a real step claims the inbox,
+  assembles the system prompt, projects runtime context, and runs the
   `agent/pre-step` and `agent/request` waterfalls. The mini's step is derive
   plus stream; sections 05 to 09 fill the rest in.
 - **More ways for a step to end.** A real step ends `completed` (no tool
