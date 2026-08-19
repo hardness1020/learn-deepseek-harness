@@ -7,10 +7,13 @@ the lifecycle kernel every later section mounts its pieces on.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
 subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,
-subagent shutdown. The naive way to make that safe is a convention: every plugin writes a
-`cleanup()` that unregisters whatever it registered. Conventions drift. One plugin adds a
-listener in a new code path, forgets the matching unregister, and now unloading it leaks a
-callback that fires against a dead plugin forever.
+subagent shutdown.
+
+The naive way to make that safe is a convention: every plugin writes a `cleanup()` that
+unregisters whatever it registered.
+
+Conventions drift. One plugin adds a listener in a new code path, forgets the matching
+unregister, and now unloading it leaks a callback that fires against a dead plugin forever.
 
 The kernel flips the ownership. Registering something *is* handing the framework the undo.
 For that to hold, the kernel must:
