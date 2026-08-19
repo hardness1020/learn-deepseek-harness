@@ -1,0 +1,3 @@
+# Live demos only (sections 04+). Offline checks need nothing installed. See ADR 0001.
+anthropic
+python-dotenv
