@@ -42,20 +42,22 @@ def execute_tool_calls(session, tools, calls, aborted):
                 outcomes[index] = future.result()
     # finish: one result per call, model order; skipped calls answer too
     for index, call, _safe in plan:
-        result = outcomes.get(index) or {
-            "call_id": call.get("id"),
-            "name": call.get("name"),
-            "is_error": True,
-            "content": ABORTED_BEFORE_DISPATCH,
-        }
-        session.append("tool/result", result)
+        if index not in outcomes:  # never dispatched: answer anyway
+            outcomes[index] = {
+                "call_id": call.get("id"),
+                "name": call.get("name"),
+                "is_error": True,
+                "content": ABORTED_BEFORE_DISPATCH,
+            }
+        session.append("tool/result", outcomes[index])
 
 
 def _batches(plan):
     """Consecutive safe calls share a batch; an exclusive call stands alone."""
     safe_run = []
     for entry in plan:
-        if entry[2]:
+        _index, _call, safe = entry
+        if safe:
             safe_run.append(entry)
             continue
         if safe_run:

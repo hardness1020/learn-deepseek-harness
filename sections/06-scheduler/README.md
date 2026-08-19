@@ -109,13 +109,14 @@ def execute_tool_calls(session, tools, calls, aborted):
                 outcomes[index] = future.result()
     # finish: one result per call, model order; skipped calls answer too
     for index, call, _safe in plan:
-        result = outcomes.get(index) or {
-            "call_id": call.get("id"),
-            "name": call.get("name"),
-            "is_error": True,
-            "content": ABORTED_BEFORE_DISPATCH,
-        }
-        session.append("tool/result", result)
+        if index not in outcomes:  # never dispatched: answer anyway
+            outcomes[index] = {
+                "call_id": call.get("id"),
+                "name": call.get("name"),
+                "is_error": True,
+                "content": ABORTED_BEFORE_DISPATCH,
+            }
+        session.append("tool/result", outcomes[index])
 ```
 
 The pipeline from section 05 is untouched: workers call
@@ -184,7 +185,7 @@ The scheduler lives in the loop package, not the tool runtime:
 | Mini-dsh | Real dsh | Notes |
 | --- | --- | --- |
 | `execute_tool_calls` in `scheduler.py` | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts): `executeToolCalls` | The loop never calls `ctx.tools.execute()` directly on a reply's calls; `executeToolCalls` drives the same 4-stage `prepare / dispatch / finalize / finish` scheduler. |
-| `is_concurrency_safe` | [`packages/core/tools/src/schema.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/schema.ts): `defineTool()` | `ToolDefinition.isConcurrencySafe`, declared per tool; exclusive unless the tool claims otherwise. |
+| `is_concurrency_safe` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `ToolDefinition` | `ToolDefinition.isConcurrencySafe`, declared per tool; exclusive unless the tool claims otherwise. |
 | the synthetic result | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `TOOL_ABORTED_BEFORE_DISPATCH` | A distinct code from `TOOL_ABORTED`, so a transcript can tell a skipped call from an interrupted one. |
 | `Agent.cancel()` + `threading.Event` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `Agent.cancel` | Real cancellation is fused abort signals threaded through the whole runtime; the mini keeps one event per turn, checked at batch boundaries. |
 | finish appends in model order | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts) | Results become session events in the loop, not the registry; `tool/result` events also carry `sourceEventSeqs` linking each answer to its rows, where the mini leans on `call_id`. |
@@ -199,9 +200,8 @@ What the real scheduler adds on top of this section's Mechanism:
   wraps `tools/execute` with a deadline while never abandoning the
   tool's promise. The mini never interrupts a started body at all, so
   its only abort code is the before-dispatch one.
-- **More ways to abort.** A result can carry `concludesTurn`, ending
-  the turn early and aborting everything still behind the barrier.
-  The mini's only abort source is `cancel()`.
+- **More ways to end early.** A result can carry `concludesTurn`,
+  ending the turn early. The mini's only early exit is `cancel()`.
 - **Async all the way down.** dsh's tool bodies are async, so overlap
   is promise concurrency in one thread; the mini's bodies are plain
   Python callables, so it buys the same overlap with a thread pool.
@@ -232,7 +232,7 @@ What the real scheduler adds on top of this section's Mechanism:
 - **A skipped call with no row is a hole in the transcript.** The
   assistant message already carries all four calls; drop the unstarted
   two and the derived history asks questions it never answers. The
-  synthetic result is section 05's lesson surviving cancellation:
+  synthetic result is section 05's rule surviving cancellation:
   every call gets an answer row, no matter how it went.
 - **Workers writing to the log would need locks everywhere.** The
   session log is single-writer by construction: prepare and finish run
