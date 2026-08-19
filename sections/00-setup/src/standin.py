@@ -2,7 +2,7 @@
 
 A passive queue of canned responses, handed out in order. It never
 inspects the request. Each response streams as a few deterministic
-chunks, then the final Message — so streaming is real from day one.
+chunks, then the final Message, so streaming is real from day one.
 """
 
 from message import Message

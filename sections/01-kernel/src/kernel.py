@@ -1,6 +1,6 @@
 """The kernel: fiber/effect reversible registrations.
 
-Every registration a plugin makes — a listener, a service, anything —
+Every registration a plugin makes (a listener, a service, anything)
 hands the framework an undo (a disposer), collected on the Fiber that
 owns the plugin. Unmounting runs the undos in reverse. One primitive,
 effect(), underlies all of it.

@@ -6,7 +6,7 @@ This page continues the [mini-dsh track](../../README.md): phase Foundation, sec
 the lifecycle kernel every later section mounts its pieces on.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
-subsystems mount and unmount at runtime — on profile switches, hot reloads, test teardown,
+subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,
 subagent shutdown. The naive way to make that safe is a convention: every plugin writes a
 `cleanup()` that unregisters whatever it registered. Conventions drift. One plugin adds a
 listener in a new code path, forgets the matching unregister, and now unloading it leaks a
@@ -15,11 +15,11 @@ callback that fires against a dead plugin forever.
 The kernel flips the ownership. Registering something *is* handing the framework the undo.
 For that to hold, the kernel must:
 
-1. Make every registration — listener, service, anything — produce an undo (a **disposer**).
+1. Make every registration (listener, service, anything) produce an undo (a **disposer**).
 2. Collect disposers on the **fiber** that owns the plugin, so unmount is one framework
    operation: run them in reverse.
 3. Run each disposer at most once, no matter who calls it first.
-4. Refuse registrations on an already-disposed fiber — an error, not a silent leak.
+4. Refuse registrations on an already-disposed fiber: an error, not a silent leak.
 
 ---
 
@@ -40,7 +40,7 @@ A plugin is just a function that receives its context:
 def echo_plugin(ctx):
     ctx.on("say", heard.append)                       # registration #1
     ctx.provide("echo", lambda t: f"echo: {t}")       # registration #2
-    # no cleanup code — the undos are already on this plugin's fiber
+    # no cleanup code: the undos are already on this plugin's fiber
 
 fiber = ctx.plugin(echo_plugin)   # mount
 fiber.dispose()                   # unmount: listener and service both gone
@@ -66,7 +66,7 @@ def dispose(self):
         run()
 ```
 
-And every registration API is three lines — do the thing, hand `effect()` the undo:
+And every registration API is three lines: do the thing, hand `effect()` the undo:
 
 ```python
 def on(self, event, callback):
@@ -85,14 +85,14 @@ unmount:  fiber.dispose() ──► undos run in reverse ──► registrations
 ```
 
 Reverse order matters: a plugin registers its foundations first and the things that depend
-on them after, so teardown must dismantle the dependents before the foundations — the same
+on them after, so teardown must dismantle the dependents before the foundations, the same
 reason destructors and `defer` stacks unwind backwards.
 
 ### What changed
 
 Compared with section 00:
 
-- `message.py` and `standin.py` are carried forward verbatim — the diff against 00 is this
+- `message.py` and `standin.py` are carried forward verbatim; the diff against 00 is this
   section's mechanism, nothing else.
 - New `kernel.py`: `Fiber`, `effect()`, and a `Context` whose registration APIs all route
   through `effect()`.
@@ -109,7 +109,7 @@ The kernel is Cordis, source-vendored and locally patched under `vendor/`
 
 | Mini-dsh | Real dsh | Notes |
 | --- | --- | --- |
-| `Fiber` | [`vendor/cordis/src/fiber.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/fiber.ts) — `Fiber`, `effect()` | Six states (`PENDING, LOADING, ACTIVE, FAILED, DISPOSED, UNLOADING`) vs our three; effects also accept `Promise` and `(Async)Iterable` shapes. |
+| `Fiber` | [`vendor/cordis/src/fiber.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/fiber.ts): `Fiber`, `effect()` | Six states (`PENDING, LOADING, ACTIVE, FAILED, DISPOSED, UNLOADING`) vs our three; effects also accept `Promise` and `(Async)Iterable` shapes. |
 | `InactiveEffectError` | `CordisError('INACTIVE_EFFECT')` in `fiber.ts` | Thrown for effects created while `UNLOADING`. |
 | `Context` | [`vendor/cordis/src/context.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/context.ts) | A `Proxy` over itself, with `extend` / `isolate` / `intercept` we skip entirely. |
 | `on` / `emit` | [`vendor/cordis/src/events.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/events.ts) | Five dispatch modes (`emit / parallel / serial / bail / waterfall`); we build only `emit`, later sections add modes as the loop needs them. |
@@ -120,13 +120,13 @@ What the real kernel adds on top of this section's mechanism:
 
 - **`inject`-driven reload**: a fiber declares the services it needs; when an injected
   service's provider changes, the fiber reloads automatically (provider-uid epochs in
-  `fiber.ts`). Reversibility is what makes that cascade safe — reload is just
+  `fiber.ts`). Reversibility is what makes that cascade safe: reload is just
   dispose-then-mount.
 - **HMR as the same code path**: hot module replacement (`vendor/hmr/`) is dispose + re-mount
   of the changed plugin's fiber. Excluded from the mini-dsh (Ceiling): it is file-watching
   plumbing over the mechanism this section already built.
 - Config-driven mounting: [`vendor/loader/src/config/entry.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/loader/src/config/entry.ts)
-  turns a config row into a mount/unmount — section 13's composition layer stands on it.
+  turns a config row into a mount/unmount; section 13's composition layer stands on it.
 
 ---
 
@@ -143,7 +143,7 @@ What the real kernel adds on top of this section's mechanism:
   fiber, but nothing orders *across* fibers here. Real dsh layers `inject` on top so
   dependent fibers unload before their providers.
 - **Registering during teardown.** A callback that fires mid-dispose and registers a new
-  effect would leak it silently — which is why a disposed fiber throws
+  effect would leak it silently, which is why a disposed fiber throws
   `InactiveEffectError` instead of accepting the registration.
 - **Holding a service reference across unmount.** `ctx.get("echo")` returns a live object;
   a caller that caches it keeps it working after its provider is gone. Real dsh's proxies
