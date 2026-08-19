@@ -2,9 +2,6 @@
 
 > Every registration is an undo the framework collects. Unloading a plugin is running its undos in reverse.
 
-This page continues the [mini-dsh track](../../README.md): phase Foundation, section 01,
-the lifecycle kernel every later section mounts its pieces on.
-
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
 subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,
 subagent shutdown.
