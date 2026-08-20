@@ -1,17 +1,10 @@
 """Offline check for section 07: next-turn/next-step steering."""
 
-import json
-
 from agent_loop import agent_loop_plugin
 from kernel import Context
 from session_log import session_log_plugin
 from standin import ScriptedModel
 from tools import ToolDefinition, tools_plugin
-
-
-def thaw(value):
-    """Frozen event parts back to plain JSON data, for easy comparison."""
-    return json.loads(json.dumps(value, default=dict))
 
 
 def build(responses):

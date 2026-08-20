@@ -75,6 +75,10 @@ class Agent:
             while True:
                 self._abort.clear()  # cancel() marks one turn, not the agent
                 self._turn()
+                # Checked after every mid-turn sender has finished: worker
+                # bodies join at the scheduler's barrier and bus listeners
+                # run on this thread, so no insert can land between this
+                # check and going idle.
                 if not self.inbox.has("next-turn"):
                     break
         finally:
