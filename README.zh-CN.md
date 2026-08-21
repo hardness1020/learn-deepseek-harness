@@ -61,23 +61,23 @@ Section 要照顺序读：每一个都把前一个的 `src/` 原封不动搬过�
 | # | Section | 设计问题 | Mechanism |
 |---|---------|-----------------|-----------|
 | | **Foundation** | | |
-| 00 | [Setup](sections/00-setup/) | 为什么每个 Section 的检查都得离线、对着 stand-in 跑？ | repo 骨架、runner、model stand-in 的 seam |
-| 01 | [Kernel](sections/01-kernel/) | 为什么卸载一个 plugin 这件事，能交给框架做对，而不是每个 plugin 自己收尾？ | 可反向撤销的 fiber/effect 注册 |
-| 02 | [Session log](sections/02-session-log/) | 为什么要从一份 log 推导出 model 看到的历史，而不是直接存一份消息列表？ | 只能追加的 log + surface + deriveMessages |
-| 03 | [Compaction](sections/03-compaction/) | 如果 log 只能追加，compaction 要怎么拿掉 model 看得到的东西？ | surface 的 `replace` 操作 |
+| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么每个 Section 的检查都得离线、对着 stand-in 跑？ | repo 骨架、runner、model stand-in 的 seam |
+| 01 | [Kernel](sections/01-kernel/README.zh-CN.md) | 为什么卸载一个 plugin 这件事，能交给框架做对，而不是每个 plugin 自己收尾？ | 可反向撤销的 fiber/effect 注册 |
+| 02 | [Session log](sections/02-session-log/README.zh-CN.md) | 为什么要从一份 log 推导出 model 看到的历史，而不是直接存一份消息列表？ | 只能追加的 log + surface + deriveMessages |
+| 03 | [Compaction](sections/03-compaction/README.zh-CN.md) | 如果 log 只能追加，compaction 要怎么拿掉 model 看得到的东西？ | surface 的 `replace` 操作 |
 | | **The Loop** | | |
-| 04 | [Agent loop](sections/04-agent-loop/) | 为什么每一个 step 都要重新组一次 prompt、重新推一次历史？ | turn/step 状态机，log 是唯一持久的状态 |
-| 05 | [Tools](sections/05-tools/) | 为什么被拒绝或出错的调用，还是会产生一条正常的 tool/result？ | 有作用域的 registry + pre/ask/guard/execute/post pipeline |
-| 06 | [Scheduler](sections/06-scheduler/) | 为什么可以并行跑的调用会叠在一起跑，互斥的调用会卡成一道关卡，而还没开始就被中止的调用会拿到一个合成出来的结果？ | 四阶段的并行 tool scheduler |
-| 07 | [Inbox](sections/07-inbox/) | 为什么 inbox 要有两个投递目标，而且只在 step 的边界认领？ | next-turn/next-step 两种介入时机 |
-| 08 | [System prompt](sections/08-system-prompt/) | 为什么动态状态是一条重新发出的 user 消息，而不是写进 system 文本里？ | 照顺序跑的 provider -> system 文本 + tool 列表 + runtime-context 快照 |
-| 09 | [Skills](sections/09-skills/) | 为什么 skill 列表是当成 context 注入，内容却要靠一次 tool 调用才加载进来？ | 分层的 provider registry；列表先注入，内容按需加载 |
+| 04 | [Agent loop](sections/04-agent-loop/README.zh-CN.md) | 为什么每一个 step 都要重新组一次 prompt、重新推一次历史？ | turn/step 状态机，log 是唯一持久的状态 |
+| 05 | [Tools](sections/05-tools/README.zh-CN.md) | 为什么被拒绝或出错的调用，还是会产生一条正常的 tool/result？ | 有作用域的 registry + pre/ask/guard/execute/post pipeline |
+| 06 | [Scheduler](sections/06-scheduler/README.zh-CN.md) | 为什么可以并行跑的调用会叠在一起跑，互斥的调用会卡成一道关卡，而还没开始就被中止的调用会拿到一个合成出来的结果？ | 四阶段的并行 tool scheduler |
+| 07 | [Inbox](sections/07-inbox/README.zh-CN.md) | 为什么 inbox 要有两个投递目标，而且只在 step 的边界认领？ | next-turn/next-step 两种介入时机 |
+| 08 | [System prompt](sections/08-system-prompt/README.zh-CN.md) | 为什么动态状态是一条重新发出的 user 消息，而不是写进 system 文本里？ | 照顺序跑的 provider -> system 文本 + tool 列表 + runtime-context 快照 |
+| 09 | [Skills](sections/09-skills/README.zh-CN.md) | 为什么 skill 列表是当成 context 注入，内容却要靠一次 tool 调用才加载进来？ | 分层的 provider registry；列表先注入，内容按需加载 |
 | | **Capabilities** | | |
-| 10 | [Capability seams](sections/10-capability-seams/) | 一个能力要到什么时候才值得拆成三份？ | Definition/Provider/Consumer 三个抽象基类（fs/shell/sandbox/llm） |
-| 11 | [Jobs](sections/11-jobs/) | job id 一旦公开出去，取消的权责归谁？ | 只有拥有者能动的后台工作协议 |
-| 12 | [Subagent](sections/12-subagent/) | 为什么接口是架在“开一个 child、交回一次 run”上面，而不是继承出一个 agent 子类？ | 具名 provider 的委派 registry |
+| 10 | [Capability seams](sections/10-capability-seams/README.zh-CN.md) | 一个能力要到什么时候才值得拆成三份？ | Definition/Provider/Consumer 三个抽象基类（fs/shell/sandbox/llm） |
+| 11 | [Jobs](sections/11-jobs/README.zh-CN.md) | job id 一旦公开出去，取消的权责归谁？ | 只有拥有者能动的后台工作协议 |
+| 12 | [Subagent](sections/12-subagent/README.zh-CN.md) | 为什么接口是架在“开一个 child、交回一次 run”上面，而不是继承出一个 agent 子类？ | 具名 provider 的委派 registry |
 | | **Composition** | | |
-| 13 | [Composition](sections/13-composition/) | 为什么一个 patch 是整份 config 的替换，而不是深层合并？ | 在一份空的 entry 列表上，照顺序叠 patch 层 |
+| 13 | [Composition](sections/13-composition/README.zh-CN.md) | 为什么一个 patch 是整份 config 的替换，而不是深层合并？ | 在一份空的 entry 列表上，照顺序叠 patch 层 |
 
 ## 项目结构
 

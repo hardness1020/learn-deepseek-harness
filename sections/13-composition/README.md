@@ -1,8 +1,10 @@
 # 13 · Composition
 
-> Over an empty page, each layer writes its rows in turn. When the
-> last layer falls silent, what remains is the application: not
-> code that calls code, but a list the machine mounts.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> After twelve sections, what a product actually mounts is still a Python
+> function somebody edits. Two builds are the same plugins in different
+> lists, so the harness stops being code and becomes a list.
 
 Every section so far ended the same way: a check that assembled the
 harness by hand. Mount the session log, mount the tools, mount the

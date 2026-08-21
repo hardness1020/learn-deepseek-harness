@@ -1,13 +1,16 @@
 # 02 · Session log
 
-> The model's history is not a list you keep. It is a view you derive, from a
-> log you never edit.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> The model wants clean history, saving to disk wants every row, and
+> compaction wants to shrink what the model sees. One list cannot serve all
+> three, so record everything once and work out each view from that.
 
 An agent turn produces far more than messages: streamed chunks, tool calls and results,
 turn markers, request headers.
 
-Several consumers also want different views of the same turn. The model wants clean
-history, persistence wants every row, and compaction wants to shrink what the model
+The same turn gets read three different ways. The model wants clean history,
+saving to disk wants every row, and compaction wants to shrink what the model
 sees without losing the record.
 
 The naive way is one shared `messages` list, appended as the turn runs.

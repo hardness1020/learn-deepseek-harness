@@ -1,7 +1,10 @@
 # 07 · Inbox
 
-> Say it whenever you like. The loop hears it at the next boundary,
-> in the next request, exactly once. Never mid-sentence.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> Nobody wants to wait for the machine to go quiet before speaking. Writing
+> straight into the log would claim the model read words it never got, so
+> input waits between steps instead.
 
 Section 06's agent still has exactly one door. `send()` takes a
 message, runs a whole turn, and returns; a second `send()` mid-turn

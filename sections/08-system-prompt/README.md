@@ -1,16 +1,19 @@
 # 08 · System prompt
 
-> The system text is a promise: the same words, in the same order,
-> every single step. Anything that cannot keep that promise rides
-> along as a message.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> Several parts of the harness each own a piece of what the model is told,
+> and their words must land identically every step. So anything that
+> changes between steps cannot live there.
 
 Section 07's request is honest but bare. `_step()` pulls schemas
 straight off the tool registry and ships no system text at all: the
 model is never told who it is, how it should behave, or what the
 world looks like right now.
 
-The missing text has many owners. Mini-dsh owns its identity line; a
-persona plugin owns tone; the tool layer owns the schema list. Each wants to contribute its piece without coordinating with
+Several parts of the harness each write a piece of that text. Mini-dsh
+writes its own identity line; a persona plugin writes tone; the tool
+layer writes the schema list. Each wants to contribute its piece without coordinating with
 the others, and every piece must land in the same place in every
 request.
 

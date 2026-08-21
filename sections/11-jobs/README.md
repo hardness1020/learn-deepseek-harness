@@ -1,8 +1,10 @@
 # 11 · Jobs
 
-> The call ends; the work does not. From the moment the id is
-> published, the producing call's cancel is a dead letter, and the
-> only hand left on the kill switch is the owner's.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> A slow command should not hold the whole turn hostage. But work that runs
+> off on its own belongs to nobody, so the moment its id goes out, one
+> owner holds the only stop button.
 
 Eleven sections in, every piece of work mini-dsh starts still dies
 with its turn. The scheduler's contract from section 06 is strict

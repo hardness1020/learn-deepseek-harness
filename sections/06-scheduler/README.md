@@ -1,7 +1,11 @@
 # 06 · Scheduler
 
-> Safe calls overlap, an exclusive call stands alone, and reality
-> finishes in whatever order it likes. The log never does.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> Running calls one at a time wastes real time. Letting them write to the
+> log in whatever order they happen to finish means the same turn produces
+> a different transcript each run. So overlap the work, but keep the order
+> fixed.
 
 Section 05 runs a reply's calls with a for-loop: one call, one answer,
 next call. That was invisible while every reply carried one call. Real

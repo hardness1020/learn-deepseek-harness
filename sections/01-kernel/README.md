@@ -1,6 +1,11 @@
 # 01 · Kernel
 
-> Every registration is an undo the framework collects. Unloading a plugin is running its undos in reverse.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> Tools, prompts, whole subsystems all get mounted while the harness runs,
+> and all have to come back out. Ask each one to remember its own cleanup
+> and one forgotten line leaks forever, so registering hands over the undo
+> with it.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
 subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,

@@ -1,8 +1,10 @@
 # 09 · Skills
 
-> A catalog is a menu, not the meal. Every request pays for the
-> names and a line apiece; the full text arrives only when the
-> model orders it.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> Instruction text is too big to ship every step and too useful to leave
+> out. So the request carries only the names, and the text itself is
+> fetched when something wants it.
 
 Section 08's request carries stable system text and a changing
 snapshot, but every word it carries still ships every step.
@@ -15,8 +17,8 @@ the system text and every request pays for all of them, used or
 not. Leave them out entirely and the model cannot use what it never
 hears about.
 
-And the set is not fixed. Skill text has many owners: a built-in
-set, a workspace, a plugin. Each mounts, unmounts, or overrides a
+And the set is not fixed. Skill text arrives from several places at
+once: a built-in set, a workspace, a plugin. Each mounts, unmounts, or overrides a
 name while the session runs, and none may edit another's text to
 do it.
 

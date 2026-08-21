@@ -1,7 +1,10 @@
 # 05 · Tools
 
-> The pipeline has four ways to say no and exactly one way to answer: a
-> result. Even a call that never ran gets one.
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+> A tool's request is written to the log before the tool runs. If it throws
+> and nothing goes back, the conversation keeps a question nobody answered.
+> So every call writes an answer, even a failed one.
 
 Section 04's loop can only talk. Every step ends `"completed"` because the
 model has nothing to do but reply. Tools change that: the model asks
