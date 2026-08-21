@@ -11,8 +11,9 @@ straight off the tool registry and ships no system text at all: the
 model is never told who it is, how it should behave, or what the
 world looks like right now.
 
-The missing text has many owners. Mini-dsh owns its identity line; a
-persona plugin owns tone; the tool layer owns the schema list. Each wants to contribute its piece without coordinating with
+Several parts of the harness each write a piece of that text. Mini-dsh
+writes its own identity line; a persona plugin writes tone; the tool
+layer writes the schema list. Each wants to contribute its piece without coordinating with
 the others, and every piece must land in the same place in every
 request.
 

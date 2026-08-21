@@ -2,15 +2,15 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A turn has several readers, and one message list can only serve one of
-> them. So record everything once, and work out what the model sees from
-> that record.
+> The model wants clean history, saving to disk wants every row, and
+> compaction wants to shrink what the model sees. One list cannot serve all
+> three, so record everything once and work out each view from that.
 
 An agent turn produces far more than messages: streamed chunks, tool calls and results,
 turn markers, request headers.
 
-Several consumers also want different views of the same turn. The model wants clean
-history, persistence wants every row, and compaction wants to shrink what the model
+The same turn gets read three different ways. The model wants clean history,
+saving to disk wants every row, and compaction wants to shrink what the model
 sees without losing the record.
 
 The naive way is one shared `messages` list, appended as the turn runs.

@@ -2,9 +2,10 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Everything in this harness mounts and unmounts at runtime. Cleanup by
-> convention leaks the moment one plugin forgets, so registering something
-> hands the framework the undo.
+> Tools, prompts, whole subsystems all get mounted while the harness runs,
+> and all have to come back out. Ask each one to remember its own cleanup
+> and one forgotten line leaks forever, so registering hands over the undo
+> with it.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
 subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,

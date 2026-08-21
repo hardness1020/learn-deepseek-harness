@@ -2,22 +2,24 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> History has to shrink eventually, but the log is append-only and editing
-> it breaks everything built on it. The model never reads the log, so
-> shrink the view instead.
+> History has to shrink eventually, but the log only ever grows and editing
+> it breaks everything built on it. The model never reads the log, though:
+> it reads a list of which rows to show. Shrink that.
 
 Conversations outgrow the context window. Sooner or later the model's history
 must shrink: a long stretch of old exchanges gives way to a short summary.
 
-But section 02 made the log append-only on purpose. Seqs are forever, the bus
-feed and any persisted row point at them, and replay depends on them. Editing
-or deleting rows would break everything the log promised.
+But section 02 made the log append-only on purpose. A row's seq is its position
+in the log, forever; the event feed and anything already saved point at those
+numbers, and replay walks them in order. Editing or deleting a row would break
+all of it.
 
 So: if the log is append-only, how does compaction remove anything the model
 sees?
 
 Section 02 already built the way out. The model never sees the log; it sees
-messages derived from the surface.
+messages derived from the surface, which is nothing more than the list of
+which rows count as messages.
 
 Compaction is therefore a surface edit, not a log edit: one new event,
 appended like any other, whose surface op replaces a run of surface entries

@@ -12,10 +12,11 @@ command, has to live somewhere, and the obvious home is the tool
 body itself.
 
 That home welds three decisions into one function: what the model
-sees, what the contract is, and which machine fulfills it. The
-Offline check wants memory, a workstation wants the disk, a
-locked-down host wants a fence, and every difference rewrites the
-tool and wobbles the schema the model plans against.
+sees, what the contract is, and which machine does the work. The
+Offline check needs its files in memory; your laptop needs the real
+disk; a locked-down host needs neither. Serve all three from one
+tool body and you write that body three times over, and the schema
+the model plans against moves every time you do.
 
 The opposite ceremony fails too. Give every capability an
 interface, a backend package, and a tool package on day one, and
