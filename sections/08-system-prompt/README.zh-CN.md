@@ -1,4 +1,4 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ d5b8152 -->
 
 # 08 · System prompt
 
@@ -8,7 +8,7 @@
 
 Section 07 送出去的 request 很诚实，但也很空。`_step()` 直接从 tool registry 捞 schema，system 文本则是一个字都不带：没有人告诉 model 它是谁、该怎么表现、现在外面的世界长什么样。
 
-这些缺席的文本，主人不只一个。Mini-dsh 管自己的身份那一行；某个 persona plugin 管语气；tool 那一层管 schema 列表。每一方都想把自己那一块放进去，又不想为了这件事去跟别人协调；而且每一块在每一次 request 里，都得落在同一个位置。
+harness 里有好几个部分会各自写一段这种文本。Mini-dsh 写自己的身份那一行；persona plugin 写语气；tool 这一层写 schema 列表。每一方都想把自己的那一段放进去，又不想为了这件事跟别人协调；而且每一段在每次 request 里，都得落在同一个位置。
 
 而且有些状态是会变的。时钟、工作目录这种：model 要的是当下的读数；但只要把它写死在 system 文本里，就不会有任何两个 step 送出一样的 prompt。model 那一端是靠稳定的 prompt 前缀在做缓存，所以 system 文本里只要有一个时间戳，每个 step 的缓存都会落空。
 

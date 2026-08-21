@@ -1,20 +1,20 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ d5b8152 -->
 
 # 03 · Compaction
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> 历史总有一天得缩小，但 log 只能往后加，改它会拆掉建立在 log 上的所有东西。model 从不读 log，所以要缩小的是 model 看的那份视图。
+> 历史总有一天得缩小，但 log 只会往后长，改它会弄坏建立在上面的所有东西。不过 model 从来不读 log，它读的是一份列表，列表列出哪些记录要显示给它看。要缩小的是那份列表。
 
 对话会长到 context window 装不下。model 的历史迟早得缩短：一长串旧的来回，换成一小段摘要。
 
-但 Section 02 把 log 做成只能追加，是故意的。seq 是永久的，bus 那条事件流和任何一条存下来的记录都指着它，重放也靠它。去改或去删记录，log 当初承诺的每一件事都会坏掉。
+但 Section 02 把 log 做成只能追加，是故意的。每一条记录的 seq 就是它在 log 里的位置，而且永远不变；事件流和已经存下来的任何记录都指向这些数字，重放也会照着这些数字依序走一遍。改掉或删掉任何一条记录，这一整套都会坏掉。
 
 所以：如果 log 只能追加，compaction 要怎么拿掉 model 看得到的东西？
 
-Section 02 已经先把出路做好了。model 从来看不到 log，它看到的是从 surface 推导出来的消息。
+Section 02 已经先把出路做好了。model 从来看不到 log，它看到的是从 surface 推导出来的消息，而 surface 其实就是一份列表，列出哪些记录算是消息。
 
-所以 compaction 改的是 surface，不是 log：一个新事件，跟其他事件一样被追加进去，而它带的 surface op 会把 surface 上连续的一段换成它自己。
+所以 compaction 改的是 surface，不是 log：它先像其他事件一样追加一个新事件，事件上带着一个 surface op，告诉 session log 要把 surface 上连续的一段换成这个新事件。
 
 要做到这件事，session log 得先：
 

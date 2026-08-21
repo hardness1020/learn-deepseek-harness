@@ -1,10 +1,10 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ d5b8152 -->
 
 # 05 · Tools
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> tool 呼叫是已經寫進 log 的問題。不回答而是丟出例外，會讓 model 盯著一個沒人回答的問題，所以每次呼叫都要有答案。
+> tool 的 request 會在 tool 執行前先寫進 log。如果 tool 丟出例外卻沒有任何結果寫回去，對話裡就留下沒人回答的問題。所以每次呼叫都要寫回答案，就算是失敗的答案也一樣。
 
 Section 04 的 loop 只會講話。每個 step 都以 `"completed"` 結束，因為 model 除了回一句之外沒別的事好做。tool 改變了這件事：model 會叫 mini-dsh 去跑某個東西，而且要先拿到結果，才能繼續往下走。
 

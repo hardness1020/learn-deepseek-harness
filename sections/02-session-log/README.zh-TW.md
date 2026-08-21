@@ -1,14 +1,14 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ d5b8152 -->
 
 # 02 · Session log
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> 一個 turn 會有好幾個讀者，但一份訊息清單只能顧其中一個。所以先把每件事只記一次，再從那份紀錄推導 model 看到什麼。
+> model 要乾淨的歷史，存到磁碟要每一筆紀錄，compaction 要縮小 model 看得到的內容。一份清單沒辦法同時服務三種需求，所以先把發生過的事都只記一次，再從那份紀錄整理出各自需要的內容。
 
-一次 agent turn 產出的東西遠遠不只訊息：串流出來的 chunk、tool 的呼叫和結果、 turn 的標記、請求標頭。
+一次 agent turn 產出的東西遠遠不只訊息：model 串流回來的一段段 chunk、tool 的呼叫和結果、turn 的標記、request 標頭。
 
-而且同一次 turn，會有好幾個地方要用它，每個地方想看到的樣子都不一樣。model 要的是乾淨的歷史，持久化要的是每一筆紀錄，compaction 要的是把 model 看得到的東西縮小，同時又不能弄丟紀錄。
+同一次 turn 會被拿來做三種不同用途。model 要的是乾淨的歷史，存到磁碟要的是每一筆紀錄，compaction 要的是縮小 model 看得到的內容，但不能弄丟原本的紀錄。
 
 最直覺的做法，是共用一份 `messages` 清單，turn 跑到哪就往後追加到哪。
 
