@@ -8,15 +8,18 @@ reviewing a translation batch.
 Translations are sibling files next to each English `README.md`:
 `README.zh-TW.md` (繁體中文) and `README.zh-CN.md` (简体中文).
 
-Every README carries a language switcher line, English ones included. The
-current language is plain text, the other two are links:
+Every README that has been translated carries a language switcher line, the
+English one included. The current language is plain text, the other two are
+links:
 
 ```text
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 ```
 
 It sits at the top of the file, inside the centered header block when the file
-has one.
+has one. A section README gets its line in the same batch that translates it,
+never before, because the links would point at files that do not exist yet.
+Right now only the root README qualifies.
 
 Every zh file opens with an HTML comment naming the English commit it tracks:
 
@@ -54,14 +57,18 @@ These stay byte-identical to the English file:
 Never gloss these in parentheses. A heading made only of these terms stays
 English verbatim, so its anchor stays English too.
 
-**General**: agent, harness, loop, skill, tool, session, compaction, kernel,
-scheduler, inbox, subagent, prompt, token, plugin, context, provider, registry,
-pipeline, runtime, repo, diff, commit, API, key
+The first line is the settled core. The rest are the repo's own nouns from
+`CONTEXT.md` plus terms the translations already lean on; add to it only when a
+batch actually needs the word.
 
-**Repo terms defined in [`CONTEXT.md`](../CONTEXT.md)**: dsh, Mini-dsh, Section,
-Mechanism, Phase, Carry-forward, Lens, Opening, In-real-dsh, Failure modes,
-Offline check, Live demo, Studied version, Re-pin, Layer map, Ceiling, Model
-seam, Scripted stand-in
+**General**: agent, harness, loop, skill, tool, session, compaction, kernel,
+scheduler, inbox, subagent, prompt, token, plugin, Mechanism, Section, Phase,
+Offline, then: context, provider, registry, pipeline, runtime, repo, diff, API,
+key
+
+**Repo terms defined in `CONTEXT.md`**: dsh, Mini-dsh, Carry-forward, Lens,
+Opening, In-real-dsh, Failure modes, Offline check, Live demo, Studied version,
+Re-pin, Layer map, Ceiling, Model seam, Scripted stand-in
 
 **Names**: the four Phase names (Foundation, The Loop, Capabilities,
 Composition) and the 14 Section titles, because they also name directories and

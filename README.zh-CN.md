@@ -109,7 +109,7 @@ python sections/00-setup/src/test.py     # one section
 for t in sections/*/src/test.py; do python "$t" || break; done   # all sections
 ```
 
-会碰到 model 的 Section（04 以后）另外附一个 Live demo，拿写好的 turn 去调用真正的 Anthropic API。没设 key 的话它会安静跳过。
+会碰到 model 的 Section（04 以后）另外附一个 Live demo，拿写好的 turn 去打真正的 Anthropic API。没设 key 的话它会安静跳过。
 
 ```bash
 pip install -r requirements.txt
