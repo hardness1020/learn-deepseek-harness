@@ -1,10 +1,10 @@
-<!-- source: README.md @ ea98a1a -->
+<!-- source: README.md @ 55e829b -->
 
 # 07 · Inbox
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> 你想說就說。loop 會在下一個邊界聽見，帶進下一次 request，而且只帶一次。絕不會在話講到一半的時候插進去。
+> 沒有人想等機器安靜下來才開口。直接寫進 log，等於宣稱 model 讀過那些它根本沒收到的話，所以輸入就改成等在 step 之間。
 
 Section 06 的 agent 到現在還是只有一扇門。`send()` 收下一則訊息，跑完一整個 turn 才回來；turn 還沒結束就再呼叫一次 `send()`，會直接丟出例外。使用者想說的每一句話，都得等機器安靜下來才輪得到。
 

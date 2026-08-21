@@ -1,10 +1,10 @@
-<!-- source: README.md @ 66243da -->
+<!-- source: README.md @ 55e829b -->
 
 # 11 · Jobs
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> 调用结束了，工作还没有。从 id 公开出去的那一刻起，发动它的那次调用再喊停也没人收，还按得到停止键的手，只剩拥有者那一只。
+> 慢命令不该拖住整个 turn。但自行运行的工作不属于任何人，所以 id 一公布出去，唯一的停止键就得握在一个拥有者手上。
 
 走到第十一个 Section，mini-dsh 开出去的每一件工作，还是跟着自己的 turn 一起死。Section 06 的 scheduler 对这件事的约定很硬：开始了的工作绝不丢下不管，而且每一次调用都要在 step 收掉之前给出答案。一旦你叫 shell seam 去跑一个很慢的东西，这个约定就会把整个 turn 绑在那里；model、inbox、用户，全都在等同一条命令。
 

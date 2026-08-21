@@ -1,12 +1,12 @@
-<!-- source: README.md @ e5a7812 -->
+<!-- source: README.md @ 55e829b -->
 
 # 04 · Agent loop
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> 這個 loop 身上沒有任何值得存下來的狀態。每個 step 它都重讀一次 log，問 model 一次，再把答案寫回去。
+> 這段負責推進流程的程式碼，要接住輸入、問 model、把答案寫下來。它一記對話，就會多出第二份真相，所以自己什麼都不記。
 
-Section 00 到 03 做出了一份 session log：它能推導出 model 看到的歷史，能一個 chunk 一個 chunk 接住回應，也能 compact。但沒有東西在推動它。到目前為止，每一支檢查都是自己手動把對話一則一則接下去，每一則訊息都自己 append 進去。
+Section 00 到 03 做出了一份 session log：它能推導出 model 看到的歷史，能一個 chunk 一個 chunk 接住回應，也能 compact。但沒有東西在推動它。到目前為止，每次檢查都得自己手動把對話一則一則接下去，每一則訊息都自己 append 進去。
 
 還缺的是那台機器：接住使用者打的字，呼叫 model，把回應記下來，一直重複到事情做完為止。這台機器就是 agent loop，mini-dsh 把它跑一次叫做一個 **turn**，一個 turn 由一個或多個 **step** 組成。
 

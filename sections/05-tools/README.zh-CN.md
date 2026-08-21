@@ -1,10 +1,10 @@
-<!-- source: README.md @ 4a394ca -->
+<!-- source: README.md @ 55e829b -->
 
 # 05 · Tools
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> 这条 pipeline 有四种说不的方法，回答却只有一种：一个 result。连根本没跑到的调用，也会拿到一个。
+> tool 调用是已经写进 log 的问题。不回答而是抛出异常，会让 model 盯着一个没人回答的问题，所以每次调用都要有答案。
 
 Section 04 的 loop 只会讲话。每个 step 都以 `"completed"` 结束，因为 model 除了回一句之外没别的事好做。tool 改变了这件事：model 会叫 mini-dsh 去跑某个东西，而且要先拿到结果，才能继续往下走。
 

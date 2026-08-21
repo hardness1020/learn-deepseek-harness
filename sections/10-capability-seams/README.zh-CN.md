@@ -1,10 +1,10 @@
-<!-- source: README.md @ d01aaee -->
+<!-- source: README.md @ 55e829b -->
 
 # 10 · Capability seams
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> model 看到的是一个 tool，tool 看到的是一份契约，只有 provider 看得到底下那台机器。把机器换掉，另外两个房间完全不会知道。
+> 把能力写进 tool 本体，model 看到的样子、契约和机器就绑成一块。一开始就把三者都拆开，只会多出一堆只有一种实现、根本没人会替换的抽象层。所以只有当某段代码不能知道是哪台机器回答时，才拆。
 
 走到第十个 Section，mini-dsh 还是碰不到自己那份 log 以外的任何东西。第一个真正的能力，不管是读一个文件还是跑一条命令，总得住在某个地方，而最顺手的地方就是 tool 的本体。
 

@@ -1,10 +1,10 @@
-<!-- source: README.md @ 5f94c18 -->
+<!-- source: README.md @ 55e829b -->
 
 # 08 · System prompt
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> system 文字是一個承諾：每一個 step 都是同樣的字、同樣的順序。守不住這個承諾的東西，就改用一則訊息搭便車進來。
+> harness 裡有好幾塊都各自掌管一段要告訴 model 的文字，而且每個 step 送出的字必須完全一樣。所以會在 step 之間變動的東西，不能放進那段文字裡。
 
 Section 07 送出去的 request 很誠實，但也很空。`_step()` 直接從 tool registry 撈 schema，system 文字則是一個字都不帶：沒有人告訴 model 它是誰、該怎麼表現、現在外面的世界長什麼樣。
 

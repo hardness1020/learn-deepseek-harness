@@ -1,10 +1,10 @@
-<!-- source: README.md @ 3c8b50d -->
+<!-- source: README.md @ 55e829b -->
 
 # 03 · Compaction
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> log 從來不會忘記。compaction 只是換掉這個故事裡，重新講給 model 聽的是哪一段。
+> 歷史總有一天得縮小，但 log 只能往後加，改它會拆掉建立在 log 上的所有東西。model 從不讀 log，所以要縮小的是 model 看的那份視圖。
 
 對話會長到 context window 裝不下。model 的歷史遲早得縮短：一長串舊的來回，換成一小段摘要。
 

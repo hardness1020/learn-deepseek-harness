@@ -1,10 +1,10 @@
-<!-- source: README.md @ ca824c7 -->
+<!-- source: README.md @ 55e829b -->
 
 # 02 · Session log
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> model 的歷史不是一份你存起來的清單。它是一個你推導出來的視圖，而來源是一份你從來不去改的 log。
+> 一個 turn 會有好幾個讀者，但一份訊息清單只能顧其中一個。所以先把每件事只記一次，再從那份紀錄推導 model 看到什麼。
 
 一次 agent turn 產出的東西遠遠不只訊息：串流出來的 chunk、tool 的呼叫和結果、 turn 的標記、請求標頭。
 

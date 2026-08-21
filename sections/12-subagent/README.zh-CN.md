@@ -1,10 +1,10 @@
-<!-- source: README.md @ dfc7966 -->
+<!-- source: README.md @ 55e829b -->
 
 # 12 · Subagent
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> parent 叫一个名字来帮忙，拿回来的是一个可以操作它的 handle。名字后面可能是一条线程、一个 process，也可能是网络另一头的另一个产品；契约就是那个 run，至于是谁在跑，不关任何人的事。
+> 旁支任务不该花掉 parent 的 context。用继承 agent 来做，就假设负责回答的东西住在这个 process 里，但它常常不在。所以 parent 只问名字，拿回一个 run。
 
 Section 11 教会 mini-dsh 把工作丢到后台，但所有的思考还是挤在同一个 context window 里。叫 agent 去跑个腿，摘要一个包、追一个一直失败的测试，这趟腿的完整对话记录就会永远跟在 parent 的历史里，把它原本要服务的正事挤掉。委派就是出路：把任务交给一个有自己的 session、自己的 tool 作用域、自己的 context 的 child，然后只拿回一个答案。
 

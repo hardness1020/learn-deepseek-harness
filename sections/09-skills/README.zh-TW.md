@@ -1,10 +1,10 @@
-<!-- source: README.md @ 75fe15e -->
+<!-- source: README.md @ 55e829b -->
 
 # 09 · Skills
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> 一份清單是菜單，不是那頓飯。每一次 request 都要為那些名字付錢，一個名字一行；全文要等 model 開口點了才會上桌。
+> 說明文字太大，不能每個 step 都送；又太有用，不能乾脆不放。所以 request 只帶名字，全文等真的有東西要用時再取。
 
 Section 08 的 request 帶著穩定的 system 文字和一份會變的快照，但它帶的每一個字，每個 step 都還是要送一次。指示文字塞不進這個預算：一套 harness 會慢慢累積各種專門工作的操作說明，而任何一個 turn 用得到的，幾乎都只有其中一小塊。
 

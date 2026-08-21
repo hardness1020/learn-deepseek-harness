@@ -1,10 +1,10 @@
-<!-- source: README.md @ 1371e92 -->
+<!-- source: README.md @ 55e829b -->
 
 # 01 · Kernel
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> 每一次注册，都等于把一个撤销动作交给框架收着。卸载一个 plugin，就是把它的撤销动作倒着跑一遍。
+> 这套 harness 里，东西到 runtime 才挂上，也在 runtime 拆掉。收尾只靠约定，哪个 plugin 忘了就拆不干净，所以你注册时就顺手把该怎么复原交给框架。
 
 dsh 的口号是“一切都是 plugin”：tool、session 存储、prompt 的段落，甚至整个子系统，都会在 runtime 挂上去、再卸下来，像是切换 profile、热重载、测试收尾、关掉 subagent 的时候。
 

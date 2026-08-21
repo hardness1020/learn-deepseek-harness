@@ -1,12 +1,12 @@
-<!-- source: README.md @ c6e4d6f -->
+<!-- source: README.md @ 55e829b -->
 
 # 13 · Composition
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> 在一張空白的紙上，每一層輪流寫下自己的那幾個 entry。等最後一層安靜下來，留在紙上的就是這個應用程式：不是一段程式碼呼叫另一段程式碼，而是一份機器照著掛的清單。
+> 走完十二個 Section，產品實際掛上的東西，仍然是一個得由人手動改的 Python 函式。兩種 build 只是同一批 plugin 放進不同清單，所以 harness 不再是程式碼，改成一份清單。
 
-到目前為止，每個 Section 的結尾都長一樣：一支用手把 harness 組起來的檢查。掛上 session log、掛上 tool、掛上 loop、建出 agent、接好擁有者的 tool；十二個 Section 的 mechanism 攤在那裡，而決定一個產品要掛哪幾個的，還是一支要人動手去改的 Python function。
+到目前為止，每個 Section 的結尾都長一樣：由檢查自己動手把 harness 組起來。掛上 session log、掛上 tool、掛上 loop、建出 agent、接好擁有者的 tool；十二個 Section 的 mechanism 攤在那裡，而決定一個產品要掛哪幾個的，還是得靠人手動去改 Python function。
 
 產品不能這樣出貨。web 版和 headless 版是同一批 plugin 排成不同的清單；使用者想換掉別人那份組合裡的某一個 entry，又不想整份 fork 走。harness 的描述必須變成資料：一份扁平的 entry 清單，由好幾層疊出來，每一層歸負責發言的那一方所有，基礎的廠商排最前面，使用者排最後面。
 
@@ -115,7 +115,7 @@ send("run a command")                       the composed product
 跟 Section 12 比起來：
 
 - 每一個搬過來的檔案都原封不動：`agent_loop.py`、`capabilities.py`、`inbox.py`、`jobs.py`、`kernel.py`、`message.py`、`scheduler.py`、`session_log.py`、`skills.py`、`standin.py`、`subagent.py`、`system_prompt.py`、`tools.py`。`composition.py` 是唯一新增的原始碼檔案，所以拿 12 來 diff，跑出來的就是這個 Section 的 Mechanism，沒有別的。
-- 底下沒有任何一個 mechanism 為了能被組合而改過。這些 entry 掛的，就是前面每一支檢查用手掛的同一批 plugin，走的也是 Section 01 那道 `ctx.plugin()`；model 那個 entry 是透過 Section 10 的 llm seam 接到 loop 的，adapter 用名字註冊，每次呼叫才解一次。
+- 底下沒有任何一個 mechanism 為了能被組合而改過。這些 entry 掛的，就是前面每次檢查手動掛上的同一批 plugin，走的也是 Section 01 那道 `ctx.plugin()`；model 那個 entry 是透過 Section 10 的 llm seam 接到 loop 的，adapter 用名字註冊，每次呼叫才解一次。
 - log 沒有多出任何新的事件型別。組合這件事發生在第一個 turn 打開之前；組出來的產品，它的紀錄跟用手搭的那份分不出差別，而這正是重點。
 - `demo.py`：Live demo 在一層 live 的 profile 底下啟動基礎 bundle：插入一個 adapter entry、插入一個 worker entry、把 scripted 的 model entry 停掉，再把 agent 那個 entry 的 config 整份換掉，讓它的 model 變成真的那個。
 - 這是最後一個 Section。Section 00 到 12 一片一片教出來的 harness，現在是空清單上的十六個 entry，而「一切都是 plugin，而且每一次註冊都可以反向撤銷」這句話，最後收在資料上：一個產品，就是對著空無一物做出來的一份 diff。
@@ -147,7 +147,7 @@ send("run a command")                       the composed product
 ## Failure modes
 
 - **深層合併會讓每一層都變成嫌疑犯。** 一旦開始合併，一個 entry 真正生效的 config 哪裡都不存在；它是每一層碰過它的結果疊起來的，要抓一個鍵錯在哪，就得把整疊重放一次。換掉則把答案留在一層裡的一個 entry 上：最後那個 patch 就是全部的真相。
-- **抽出來共用的預設值，會漏進一個根本沒要它的 mode。** 讓 base 帶著 `{"name": "scripted", "responses": []}`，再讓一個 profile 合併進一個鍵，那這個 profile 的 model 就會默默留著 base 的剩菜。這支檢查證明的是相反的形狀：換掉之後，舊 config 一個鍵都不會活下來。
+- **抽出來共用的預設值，會漏進一個根本沒要它的 mode。** 讓 base 帶著 `{"name": "scripted", "responses": []}`，再讓一個 profile 合併進一個鍵，那這個 profile 的 model 就會默默留著 base 的剩菜。這次檢查證明的是相反的形狀：換掉之後，舊 config 一個鍵都不會活下來。
 - **拿排列位置當載入順序，一 patch 就壞。** 每一層插進來的 entry 都是加在清單最後面，所以要是位置代表載入順序，一個 profile 加的 entry 就會把它後面所有東西的啟動順序重洗一次。由 service 到齊與否決定掛載，位置就沒有意義了，也正因為這樣，任何一層想插在哪都行。
 - **一個默默卡住的 entry，會啟動出半個產品。** 沒有清查的話，一個在等沒人提供的 service 的 entry，就只是一直掛不上去：harness 起來了，agent 不見了，卻沒有人講一句話。先跑到停、再清查那一輪，把這個安靜的洞變成一次講清楚的拒絕，指名是哪個 entry，等的是哪個 service。
 - **裝著活物件的 config 沒辦法 patch。** config 裡放一個 callable，它就沒辦法寫進檔案、沒辦法 diff，也沒辦法被後面某一層整份換掉。Live demo 的 model 是透過對照表裡的一個名字和一個 adapter entry 進來的；config 只帶名字，所以這個 entry 一直是 patch 管得動的資料。
