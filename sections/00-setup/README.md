@@ -2,38 +2,50 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Every section proves itself with a check you can run. A real model gives
-> two different answers to the same question, so a script takes its place.
+> Reach for a provider's SDK wherever an answer is needed and that provider's
+> shape ends up in the prompt, the log, and the loop. Give the core one
+> message shape and one swappable call, and the provider stays at the edge.
 
-This tutorial rebuilds a harness whose every mechanism orbits a model call:
-history is derived for the model, tools are called by the model, prompts are
-assembled for the model. And each of the 14 sections ends with a runnable
-check that must prove its Mechanism works.
+DeepSeek Harness (dsh) is a real agent harness: a large TypeScript codebase
+in which tools, prompts, and whole subsystems are plugins mounted onto a
+running kernel. This tutorial rebuilds a minimal version of it in stdlib
+Python, one Mechanism per section.
 
-The obvious setup puts a real API behind those checks. Ask a live model,
-assert on the answer.
+Every one of those mechanisms orbits a single act: asking a model for a
+response. History is derived for the model, tools are called by the model,
+prompts are assembled for the model.
 
-But a live model needs a key, a network, and money, and it returns different
-bytes for the same input. A failing assertion could mean broken code or a
-moody model, and a check that can fail for two reasons proves nothing when it
-passes. Worse, the flakiness lands in the wrong place: the thing under study
-is the harness around the model, never the model itself.
+So the rebuild needs a way to ask, and the obvious way is to import a
+provider's SDK and call it wherever an answer is needed.
 
-So: why must every section's check run offline against a stand-in?
+That spreads the provider through the harness. Its request format reaches the
+prompt builder, its response objects reach the log, its role names reach
+compaction, and changing providers becomes an edit in every one of them.
 
-Because a check exists to prove this section's Mechanism, and the model is
-the one moving part whose behavior the Mechanism does not own. Pin it, and
-every check becomes deterministic: no key, no network, same bytes every run.
-For that to hold, section 00 must:
+The answer also arrives in pieces. A model writes its text as it goes, so a
+caller that waits for one finished string can show nothing while it waits,
+and the log has nothing to record until the end.
+
+So: why does mini-dsh's core speak its own Message shape through a swappable
+Model seam?
+
+Because the harness's real subject is everything around the model call, and
+none of that work should depend on whose model answers. One shape goes in,
+one shape comes back, and the provider turns into a part you plug in. For
+that to hold, section 00 must:
 
 1. Give mini-dsh its own **Message shape**, provider-agnostic like real dsh,
    so no vendor wire format ever leaks into the core.
 2. Fix the **Model seam**: a plain callable that takes the message list and
    streams chunk events, then exactly one final message.
-3. Ship a **Scripted stand-in** speaking that contract: an ordered queue of
-   canned responses that never inspects the request.
-4. Chunk each response deterministically, so streaming is real from day one
-   and byte-identical on every run.
+3. Ship a **Scripted stand-in** speaking that contract, so the seam has a
+   working implementation the moment it exists.
+4. Chunk each response deterministically, so streaming is real from day one.
+
+How the tutorial checks itself follows from that seam. The stand-in answers
+from an ordered queue of canned responses and never reads the request, so
+every section's check runs offline, without a key, and returns the same bytes
+every time.
 
 ---
 
@@ -45,7 +57,7 @@ Three moving parts, one per file:
   dataclass of `role` and `content`.
 - **The Model seam**: not a class, a calling convention. `model(messages)`
   yields `("chunk", str)` events, then one `("message", Message)`.
-- **`ScriptedModel`** (`standin.py`): the offline seam implementation, a
+- **`ScriptedModel`** (`standin.py`): the seam's first implementation, a
   queue of canned responses.
 
 The Message shape is the whole vocabulary:
@@ -62,8 +74,13 @@ Provider-agnostic, because the core must not care whose model answers;
 translating this shape to a vendor's wire format is an adapter's job, and no
 adapter lives in the core.
 
-The stand-in is the seam's first implementation, and it is deliberately
-passive:
+Three roles cover every exchange the harness has: what the user said, what
+the model said, what a tool returned. Later sections add event types around
+these messages rather than fields inside them.
+
+The seam itself is a calling convention. Anything callable that takes a
+message list and yields the two event kinds counts as a model, so an adapter
+can be a function, a closure, or an object like the stand-in:
 
 ```python
 class ScriptedModel:
@@ -79,10 +96,8 @@ class ScriptedModel:
 ```
 
 `messages` arrives and is never read. The stand-in answers from its script,
-in order, no matter what was asked. A stub that matched on the request would
-grow rules, and rules grow into a second model that itself needs testing
-(ADR 0001 rejected exactly that). An ordered queue keeps the whole script
-visible in the check that wrote it: response one answers call one, always.
+in order, no matter what was asked, and the whole script stays visible in the
+check that wrote it: response one answers call one, always.
 
 Each response streams as a few fixed-size chunks before the final message:
 
@@ -110,9 +125,7 @@ check                                  ScriptedModel(["Hello, reader."])
 The two phases matter more than the stand-in does. The chunks are the live
 stream; the final `Message` is the durable record, and it always restates the
 full text. Section 02's log will store them as different event types, and
-section 04's loop will forward both without buffering. Because the stand-in
-streams from day one, no later section meets streaming for the first time
-against a live API.
+section 04's loop will forward both without buffering.
 
 ### What changed
 
@@ -172,25 +185,29 @@ What the real llm seam adds on top of this section's Mechanism:
 
 ## Failure modes
 
-- **A live model makes every check a coin flip.** Same input, different
-  bytes, so assertions either go vague (`"contains a word"`) or flake. The
-  stand-in returns byte-identical output every run, so checks can assert
-  exact content and mean it.
-- **A stand-in that reads the request becomes a second model.** Matching
-  rules accumulate, rules interact, and soon the fixture is clever enough to
-  be wrong. The queue's contract is dumb on purpose: response one answers
-  call one, and the script sits in plain sight inside the check.
-- **A one-blob stand-in postpones streaming.** Yield only the final message
-  and chunk handling first runs in section 04, against a live API, where
-  failures are unreproducible. Deterministic chunking makes the stream real
-  from the first check onward.
-- **Assertions on the stand-in's internals check the scaffolding.** Reaching
-  into `_queue` couples checks to a fixture that real adapters do not have.
-  The rule, kept through all 14 sections: assert on what crosses the seam,
-  and once the log exists, on the log, never on the stand-in.
-- **A script that runs out must fail loudly.** One model call too many pops
-  an empty queue and raises, so an over-asking check fails instead of
-  silently recycling an answer that happens to pass.
+- **A vendor's response shape spreads.** Store what the provider returned
+  and the log holds its JSON, compaction learns its role names, and the
+  prompt builder is written against its request format. Changing providers
+  then means editing all three. One Message shape confines the translation
+  to an adapter.
+- **A mutable message lets history be rewritten in place.** Sections 02 and
+  03 treat a recorded message as a fact that happened, and let compaction
+  shrink what the model sees only by going through the log. A message whose
+  fields can be reassigned defeats both: the record and the view drift apart
+  with no trace of the edit.
+- **A seam that returns one finished string throws the stream away.** The
+  caller has nothing to show while the model writes, section 02 has no chunk
+  events to log, and a long answer looks like a hang. Chunks give the harness
+  something to forward the moment the first bytes exist.
+- **Chunks with no closing message push reassembly onto every caller.** The
+  loop, the log, and every observer each concatenate their own copy, and each
+  can get the joins subtly wrong. One final `("message", Message)` builds the
+  durable record once, at the seam.
+- **A seam defined as a base class drags the harness into every adapter.**
+  Subclassing means a provider inherits whatever the harness's class already
+  assumes, and a plain function or a closure that wraps another model no
+  longer qualifies. A calling convention keeps the requirement at "yields
+  these two event kinds", so swapping models is passing a different callable.
 
 ---
 
@@ -216,9 +233,6 @@ The Model seam exists here, but no Mechanism drives it yet, so there is no
 
 ## Sources
 
-- [`docs/adr/0001-scripted-offline-model-live-anthropic-demos.md`](../../docs/adr/0001-scripted-offline-model-live-anthropic-demos.md):
-  the local ADR that decided the scripted offline stand-in, the Live-demo
-  split, and the options rejected on the way.
 - [learn-agent-memory](https://github.com/hardness1020/learn-agent-memory):
   the tutorial family whose offline, keyless, deterministic check convention
   this section adopts.
