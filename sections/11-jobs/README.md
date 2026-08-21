@@ -1,5 +1,7 @@
 # 11 · Jobs
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The call ends; the work does not. From the moment the id is
 > published, the producing call's cancel is a dead letter, and the
 > only hand left on the kill switch is the owner's.

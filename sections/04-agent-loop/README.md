@@ -1,5 +1,7 @@
 # 04 · Agent loop
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The loop holds no state worth saving. Every step it rereads the log, asks
 > the model once, and writes the answer back.
 

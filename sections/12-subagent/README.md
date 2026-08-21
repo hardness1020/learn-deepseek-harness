@@ -1,5 +1,7 @@
 # 12 · Subagent
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The parent asks a name for help and takes back a handle. Behind
 > the name might be a thread, a process, or another product on the
 > far end of a wire; the contract is the run, and the runner is

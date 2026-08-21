@@ -1,5 +1,7 @@
 # 02 · Session log
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The model's history is not a list you keep. It is a view you derive, from a
 > log you never edit.
 

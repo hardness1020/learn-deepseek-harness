@@ -1,5 +1,7 @@
 # 09 · Skills
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > A catalog is a menu, not the meal. Every request pays for the
 > names and a line apiece; the full text arrives only when the
 > model orders it.

@@ -17,9 +17,11 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 ```
 
 It sits at the top of the file, inside the centered header block when the file
-has one. A section README gets its line in the same batch that translates it,
-never before, because the links would point at files that do not exist yet.
-Right now only the root README qualifies.
+has one. A section README has no such block, so its line goes immediately after
+the `# NN · Title` heading, one blank line on each side, before the
+epigraph. A README gets its line in the same batch that translates it, never
+before, because the links would point at files that do not exist yet. The root
+README and all 14 sections now carry it.
 
 Every zh file opens with an HTML comment naming the English commit it tracks:
 
@@ -95,6 +97,29 @@ the vivid one when the vivid one is regional.
 The check: read the finished file aloud with the English closed. Anything you
 would not say out loud gets rewritten, no matter how faithful it is.
 
+## Headings
+
+A section README's `# NN · Title` stays English verbatim: the Section titles
+also name directories and diagram nodes. The rest of the section headings are
+fixed, so their anchors do not drift between batches:
+
+| English | 繁體中文 | 简体中文 |
+| --- | --- | --- |
+| `## Mechanism` | `## Mechanism` | `## Mechanism` |
+| `### What changed` | `### 改了什麼` | `### 改了什么` |
+| `## In real dsh` | `## In real dsh` | `## In real dsh` |
+| `## Failure modes` | `## Failure modes` | `## Failure modes` |
+| `## Runnable` | `## 跑跑看` | `## 跑跑看` |
+| `## Sources` | `## 出處` | `## 出处` |
+
+Mechanism, In real dsh, and Failure modes stay English because they are
+whitelist terms, which keeps their anchors English too.
+
+The In-real-dsh table header `| Mini-dsh | Real dsh | Notes |` becomes
+`| Mini-dsh | 真正的 dsh | 說明 |` (zh-CN: `| Mini-dsh | 真正的 dsh | 说明 |`). Cells
+holding only a symbol, path, or link stay byte-identical; the Notes column is
+prose.
+
 ## Translate prose only
 
 These stay byte-identical to the English file:
@@ -118,6 +143,19 @@ batch actually needs the word.
 scheduler, inbox, subagent, prompt, token, plugin, Mechanism, Section, Phase,
 Offline, then: context, provider, registry, pipeline, runtime, repo, diff, API,
 key
+
+**Added by the section batches**, all of them dsh or Cordis nouns bound to an
+identifier in the source: model, log, turn, step, seam, service, surface, bus,
+request, entry, job, run, child, parent, chunk, seq, fiber, effect, disposer,
+adapter, schema, policy, profile, config, patch, handle, process, waterfall,
+guard, hook, listener, payload, store
+
+Two of those were split across the first four batches and are now settled.
+`bus` and `service` stay English because they name Cordis APIs, the event bus
+behind `on` / `emit` and the `Service` a fiber provides. `thread` goes the other
+way, into 執行緒 / 线程, because it is a plain OS word rather than one of the
+repo's nouns. When a term is a dsh noun, keep it English; when it is ordinary
+computing vocabulary with a settled Chinese term, translate it.
 
 **Repo terms defined in `CONTEXT.md`**: dsh, Mini-dsh, Carry-forward, Lens,
 Opening, In-real-dsh, Failure modes, Offline check, Live demo, Studied version,
@@ -157,6 +195,32 @@ enough.
 | background | 背景 | 后台 |
 | interface | 介面 | 接口 |
 | abstract base class | 抽象基底類別 | 抽象基类 |
+| thread | 執行緒 | 线程 |
+| exception | 例外 | 异常 |
+| object | 物件 | 对象 |
+| type | 型別 | 类型 |
+| class | 類別 | 类 |
+| module | 模組 | 模块 |
+| function | 函式 | 函数 |
+| constructor | 建構子 | 构造函数 |
+| destructor | 解構子 | 析构函数 |
+| data | 資料 | 数据 |
+| cache | 快取 | 缓存 |
+| queue | 佇列 | 队列 |
+| streaming | 串流 | 流式输出 |
+| user (the person) | 使用者 | 用户 |
+| memory | 記憶體 | 内存 |
+| byte | 位元組 | 字节 |
+| character | 字元 | 字符 |
+| field | 欄位 | 字段 |
+| constant | 常數 | 常量 |
+| enum | 列舉 | 枚举 |
+| dispatch | 派送 | 分发 |
+| create | 建立 | 创建 |
+| disk | 磁碟 | 磁盘 |
+| foreground | 前景 | 前台 |
+| measure word for a script or check | 一支 | 一个 |
+| measure word for a message or row | 一則 | 一条 |
 
 Two traps in that table. 文件 means *document* in TW and *file* in CN, so a bare
 character conversion silently flips its meaning. And quoted speech is 「」 in

@@ -1,5 +1,7 @@
 # 07 · Inbox
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > Say it whenever you like. The loop hears it at the next boundary,
 > in the next request, exactly once. Never mid-sentence.
 

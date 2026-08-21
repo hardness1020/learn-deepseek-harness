@@ -1,5 +1,7 @@
 # 13 · Composition
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > Over an empty page, each layer writes its rows in turn. When the
 > last layer falls silent, what remains is the application: not
 > code that calls code, but a list the machine mounts.

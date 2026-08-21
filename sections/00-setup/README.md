@@ -1,5 +1,7 @@
 # 00 · Setup
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > A model is just a callable that streams chunks and ends with a message.
 > Anything speaking that contract can sit behind the seam, including a script.
 

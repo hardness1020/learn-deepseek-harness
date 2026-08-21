@@ -1,5 +1,7 @@
 # 06 · Scheduler
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > Safe calls overlap, an exclusive call stands alone, and reality
 > finishes in whatever order it likes. The log never does.
 

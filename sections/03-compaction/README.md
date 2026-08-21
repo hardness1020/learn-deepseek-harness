@@ -1,5 +1,7 @@
 # 03 · Compaction
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The log never forgets. Compaction only changes which part of the story the
 > model gets retold.
 

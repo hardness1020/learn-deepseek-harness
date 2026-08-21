@@ -1,5 +1,7 @@
 # 10 · Capability seams
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The model sees a tool, the tool sees a contract, and only the
 > provider sees the machine. Swap the machine; the other two rooms
 > never hear about it.

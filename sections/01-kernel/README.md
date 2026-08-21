@@ -1,5 +1,7 @@
 # 01 · Kernel
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > Every registration is an undo the framework collects. Unloading a plugin is running its undos in reverse.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole

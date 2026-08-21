@@ -1,5 +1,7 @@
 # 08 · System prompt
 
+English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 > The system text is a promise: the same words, in the same order,
 > every single step. Anything that cannot keep that promise rides
 > along as a message.
