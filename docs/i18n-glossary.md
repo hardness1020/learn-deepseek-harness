@@ -42,6 +42,59 @@ swaps below. Never a bare character conversion.
 - No em-dashes, in any language, including the Chinese 破折號.
 - Epigraphs are original prose, not quotations. Translate them fully.
 
+## Sentence shape
+
+Translate the meaning, then throw the English sentence away and say that meaning
+in Chinese. A line that keeps the English word order or an English metaphor
+reads like a machine wrote it, even when every word is correct. Six patterns,
+all six caught on the root README batch:
+
+**1. An English metaphor rarely survives the trip.** Check the picture the verb
+paints before reusing it.
+
+| English | 不要 | 要 |
+| --- | --- | --- |
+| pinned at a version | 釘在 | 固定在, 鎖定在 |
+| the system is built on it | 照這條規則蓋起來 | 建立在這條規則之上 |
+| a real harness | 一套真的 harness | 一套貨真價實的 harness |
+| hit the API | 打 API | 呼叫 API, 调用 API |
+
+**2. A trailing English qualifier moves to the front.** English can hang a
+condition off the end of a clause. Chinese states it first.
+
+- 不要: 這個 Section 要回答的那一個設計問題，在任何程式碼之前。
+- 要: 還沒碰到任何程式碼之前，先講清楚這個 Section 要回答的那一個設計問題。
+
+**3. A long pre-noun modifier splits into two clauses.** English stacks
+modifiers in front of a noun. Past roughly ten characters, Chinese chokes.
+
+- 不要: 一張把你的 Mini-dsh 符號對到真 dsh 符號的表
+- 要: 一張對照表，把你寫的 Mini-dsh 符號對到真 dsh 的符號
+
+**4. An English noun often wants to be a Chinese verb.**
+
+- 不要: Offline check 就是這份 tutorial 的證明。
+- 要: 這份 tutorial 講的每件事，都由 Offline check 來證明。
+
+**5. Hyphenated compounds get unpacked into a clause.** Chinese has no
+equivalent word-formation, so a literal rendering is opaque.
+
+- 不要: 平行安全的呼叫, 以擁有者為界的協定
+- 要: 可以平行跑的呼叫, 只有擁有者能動的協定
+
+**6. Put back the subject English dropped.** English leans on the surrounding
+paragraph for a noun Chinese needs on the spot.
+
+- 不要: 為什麼清單是當成 context 注入
+- 要: 為什麼 skill 清單是當成 context 注入
+
+Two smaller habits. Do not let one word carry two senses within a paragraph
+(結果固定的 check colliding with 連結固定在). And prefer the ordinary verb over
+the vivid one when the vivid one is regional.
+
+The check: read the finished file aloud with the English closed. Anything you
+would not say out loud gets rewritten, no matter how faithful it is.
+
 ## Translate prose only
 
 These stay byte-identical to the English file:
