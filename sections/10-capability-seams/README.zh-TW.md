@@ -53,7 +53,7 @@ class SandboxedShellExecutor(ShellExecutor):
         return self._inner.run(self._sandbox.confine(argv, self._policy))
 ```
 
-llm 這個轉折折的是另一個方向。它的 Consumer 就是 agent loop 自己，也就是從 section 04 開始每個 Agent 都收的那個 `model` 參數，所以另外幫 Consumer 開一個家，只會畫出一條永遠沒人跨過去的界線。而且 Model seam 本身就已經是契約了：一個先串出好幾個 chunk、最後給一則 Message 的普通 callable，根本不需要抽象基底類別。剩下的只有數量這件事：一份用名字記住 adapter 的 registry，加上 `model(name)` 晚一點才解名字，這樣連正在跑的 agent 都換得掉：
+llm 這個轉折折的是另一個方向。它的 Consumer 就是 agent loop 自己，也就是從 Section 04 開始每個 Agent 都收的那個 `model` 參數，所以另外幫 Consumer 開一個家，只會畫出一條永遠沒人跨過去的界線。而且 Model seam 本身就已經是契約了：一個先串出好幾個 chunk、最後給一則 Message 的普通 callable，根本不需要抽象基底類別。剩下的只有數量這件事：一份用名字記住 adapter 的 registry，加上 `model(name)` 晚一點才解名字，這樣連正在跑的 agent 都換得掉：
 
 ```python
 def model(self, name):
@@ -123,10 +123,10 @@ seam 的證據就在這個對比上：換前換後，log 裡每一行 `request/h
 
 ### 改了什麼
 
-跟 section 09 比：
+跟 Section 09 比起來：
 
 - 每一個搬過來的檔案都原封不動：`agent_loop.py`、`inbox.py`、`kernel.py`、`message.py`、`scheduler.py`、`session_log.py`、`skills.py`、`standin.py`、`system_prompt.py`、`tools.py`。`capabilities.py` 是唯一新增的原始碼檔案，所以拿 09 來 diff，跑出來的就是這個 Section 的 Mechanism，沒有別的。
-- 這個 Mechanism 一樣是純粹的 plugin：Consumer 從 section 05 的 registry 進來，Provider 從 kernel 的 `provide()` 進來，折起來的 llm 則走 loop 從 section 04 就一直在收的那個 model 參數。要做這個拆分不用加任何框架，只要守住誰可以 import 誰。
+- 這個 Mechanism 一樣是純粹的 plugin：Consumer 從 Section 05 的 registry 進來，Provider 從 kernel 的 `provide()` 進來，折起來的 llm 則走 loop 從 Section 04 就一直在收的那個 model 參數。要做這個拆分不用加任何框架，只要守住誰可以 import 誰。
 - Model seam 多了一個 service 當家，形狀卻沒變：`llm.model(name)` 還是那個先串 chunk、最後給一則 Message 的普通 callable，所以 `ScriptedModel` 和 `live_model` 一行都不用改就能註冊成 adapter。
 - log 沒有多出任何新的事件型別。換後端這件事，只會表現成同樣的 `request/header` 底下，`tool/result` 那幾行不一樣。
 - `demo.py`：Live demo 透過 llm runtime 掛上真正的 Anthropic adapter，在兩個 turn 之間換掉 fs 的後端，再讓 model 自己說出 sandbox 替身圍出來的 argv 長什麼樣。
@@ -135,7 +135,7 @@ seam 的證據就在這個對比上：換前換後，log 裡每一行 `request/h
 
 ## In real dsh
 
-所有連結都指向鎖定的那個 Studied version，[`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。每個 seam 都是一組套件家族：[`packages/fs`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/fs)、[`packages/shell`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/shell)、[`packages/sandbox`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/sandbox)、[`packages/llm`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm)。
+所有指過去的連結都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。每個 seam 都是一組套件家族：[`packages/fs`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/fs)、[`packages/shell`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/shell)、[`packages/sandbox`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/sandbox)、[`packages/llm`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm)。
 
 | Mini-dsh | 真正的 dsh | 說明 |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ seam 的證據就在這個對比上：換前換後，log 裡每一行 `request/h
 | `ArgvRewriteSandbox.confine` | [`packages/sandbox/sandbox/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/sandbox/sandbox/src/index.ts)：`SandboxProvider` | `confine(argv, policy)` 是這個 Definition 唯一的抽象方法（第 158 行）；這個 seam 不擁有任何 tool，也不擁有任何事件。 |
 | `LlmRuntime` | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts)：`LlmRuntime`、`LlmAdapter` | Definition 和 Consumer 折在同一個套件裡：`ctx.llm`（第 284 行）是給 loop 用的，adapter 則繼承 `LlmAdapter`（第 180 行）。像 [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 這樣的 Provider 透過 `ctx.llm.registerAdapter` 註冊進來。 |
 
-真正的 seam 在這個 Section 的 Mechanism 之上還多做了什麼：
+真正的 seam 在這個 Section 的 Mechanism 之上，還多做了這些：
 
 - **真的關得住。** `sandbox-local` 會串起各平台的執行器：linux 上是 `bwrap` 和 `landlock`，darwin 上是 `seatbelt`（第 160 行），還有一個 Windows ACL 的 Provider。那一整套機器就是這次重建的 Ceiling：只會改寫 argv 的替身留住了 seam 的形狀，也留住了出事就關死的規則，但它其實什麼都擋不住；真正的隔離只在這裡指給你看，不重建。
 - **事件由 seam 自己擁有。** fs 的 Definition 自己擁有 `fs/write-intent` 和 `fs/edit-intent` 兩個 waterfall，再加一個 `fs/observed` 的 emit，所以在任何 Provider 看到這次寫入之前，plugin 就可以否決它或改寫它；llm 擁有一個給中介層用的 `llm/stream` waterfall。shell 和 sandbox 一個事件都沒有：一個 Definition 對外的樣子，就是它那幾個動詞，加上它自己宣告的那些事件。
@@ -160,7 +160,7 @@ seam 的證據就在這個對比上：換前換後，log 裡每一行 `request/h
 
 - **一個去 import Provider 的 tool，等於把 seam 焊死。** 如果 `read` 的本體自己生一個後端出來，或是自己去開磁碟，那換機器就等於改 tool，每一種環境都會分岔出一份自己的 schema。本體每次呼叫都去解 `"fs"`，而且只講抽象基底類別的動詞；那條 import 的紀律就是 seam。
 - **安靜掛上去的第二個 Provider，等於出貨一個設定 bug。** 讓兩個 shell 都安靜地掛上去，那到底是哪一台機器在跑這道指令，就取決於一個沒人在讀的掛載順序。獨佔的 key 在掛載的當下就拒絕第二個，比任何一次呼叫挑錯都還早。
-- **一個出事就放行的 sandbox，比沒有還糟。** 遇到不認識的 policy 就把 argv 原封不動還回去，那每一次設定錯誤都會在沒有圍籬的情況下跑起來，而且看不見。`confine()` 直接丟例外，section 05 的 pipeline 回一則正常的 `is_error` 結果，什麼都不會跑。
+- **一個出事就放行的 sandbox，比沒有還糟。** 遇到不認識的 policy 就把 argv 原封不動還回去，那每一次設定錯誤都會在沒有圍籬的情況下跑起來，而且看不見。`confine()` 直接丟例外，Section 05 的 pipeline 回一則正常的 `is_error` 結果，什麼都不會跑。
 - **把 sandbox 做成給 model 用的 tool，等於守錯了門。** 把 `confine` 寫進 schema，要不要圍就變成 model 自己決定。sandbox 的 Consumer 是別的 seam 的 Provider：這道圍籬包住的是已經批准過的工作，位置在 schema 底下，沒有人開得了口叫它別圍。
 - **提前拆分只是多餘的重量。** 幫 llm 開一個抽象基底類別，可是它的 Consumer 只有一個，而且永遠不會變，那只是多畫一條沒人會跨的界線；adapter 早就以普通 callable 的身分躲在 `model(name)` 後面換來換去了。三份拆分是靠一個不能知道自己 Provider 是誰的 Consumer 換來的，不是靠對稱好看。
 

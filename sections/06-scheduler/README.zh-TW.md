@@ -8,17 +8,17 @@
 
 Section 05 是用一個 for 迴圈把回覆裡的呼叫跑完的：一個呼叫，一個答案，換下一個。以前每個回覆只帶一個呼叫，所以看不出差別。但真正的回覆會一次要一批：你叫 model 去讀三則筆記，它會一次全部要，而那個一個一個跑的迴圈，會把三次各一秒的讀取變成三秒的等待。
 
-最直覺的做法，是把每個呼叫全部丟給一個執行緒池，誰先回來就先 append 誰的結果。但這樣一來，log 的順序就要看執行緒的快慢了：同一個 turn 跑兩次會得到兩份不一樣的對話紀錄，replay 也就不再是重建，而是在賭誰先誰後。一個寫入如果跟餵資料給它的那個讀取疊在一起跑，它會讀到一半新一半舊的東西。至於一個 turn 在半路被取消的時候，那些根本沒開始的呼叫，正是 assistant 訊息已經問出口的問題：section 05 那份被撕開的對話紀錄，換一條路又走回來了。
+最直覺的做法，是把每個呼叫全部丟給一個執行緒池，誰先回來就先 append 誰的結果。但這樣一來，log 的順序就要看執行緒的快慢了：同一個 turn 跑兩次會得到兩份不一樣的對話紀錄，重放也就不再是重建，而是在賭誰先誰後。一個寫入如果跟餵資料給它的那個讀取疊在一起跑，它會讀到一半新一半舊的東西。至於一個 turn 在半路被取消的時候，那些根本沒開始的呼叫，正是 assistant 訊息已經問出口的問題：Section 05 那份被撕開的對話紀錄，換一條路又走回來了。
 
 所以：為什麼可以平行跑的呼叫會疊在一起跑，互斥的呼叫會卡成一道關卡，而還沒開始就被中止的呼叫會拿到一個合成出來的結果？
 
-因為速度是要付代價的，但這個代價不能是 section 05 那份契約，也就是對話紀錄。要做到這件事，scheduler 必須：
+因為速度是要付代價的，但這個代價不能是 Section 05 那份契約，也就是對話紀錄。要做到這件事，scheduler 必須：
 
 1. 先寫 log，再開跑：任何東西送出去跑之前，每個呼叫的 `tool/call` 那一行都已經 append 好了；而每個 `tool/result` 落下的順序都是 model 給的順序，不管執行緒是照什麼順序結束的。
 2. 安不安全這件事，由 tool 自己宣告：要用 `is_concurrency_safe` 主動表態，預設一律互斥，因為只有寫這個 tool 的人才知道它的實作碰了什麼。
 3. 只在同一批裡面才疊著跑：連在一起的安全呼叫會一起送出去；互斥的呼叫自己就是一批，也就是一道關卡：排在它前面的要先跑完，排在它後面的要等。
 4. 已經開跑的事情絕不半途丟下：取消是在兩批之間才生效，已經送出去的實作會讓它跑到自己結束。
-5. 連跳過的呼叫也要回答：還沒開始就被中止的呼叫會拿到一個合成出來的錯誤結果，因為 replay 重建出來的對話紀錄裡，每一個問題都得有它的答案。
+5. 連跳過的呼叫也要回答：還沒開始就被中止的呼叫會拿到一個合成出來的錯誤結果，因為重放出來的對話紀錄裡，每一個問題都得有它的答案。
 6. 只留一個寫入者：只有在跑 loop 的那條執行緒能 append 進 session log；工作執行緒負責跑 pipeline，然後把結果交回來。
 
 ---
@@ -86,7 +86,7 @@ def execute_tool_calls(session, tools, calls, aborted):
         session.append("tool/result", outcomes[index])
 ```
 
-section 05 那條 pipeline 完全沒動：工作執行緒照樣呼叫 `tools.execute(call)`，每個出口照樣是一個 result。變的是誰負責 append。scheduler 跑在 loop 那條執行緒上，是 log 唯一的寫入者；工作執行緒只算出 result dict，其他什麼都不做，所以這份只能追加的 log 永遠不需要上鎖。
+Section 05 那條 pipeline 完全沒動：工作執行緒照樣呼叫 `tools.execute(call)`，每個出口照樣是一個 result。變的是誰負責 append。scheduler 跑在 loop 那條執行緒上，是 log 唯一的寫入者；工作執行緒只算出 result dict，其他什麼都不做，所以這份只能追加的 log 永遠不需要上鎖。
 
 下面是一個被取消的 turn，log 是這樣記的。`stop` 的實作是在一批跑到一半的時候，從自己的工作執行緒裡呼叫 `agent.cancel()`：
 
@@ -107,11 +107,11 @@ send("stop everything")
   │  17  turn/end
 ```
 
-sibling 已經送出去了，所以它一路跑到自己結束。關卡後面那兩個呼叫從來沒開始，finish 還是替它們回答了。把歷史推導出來，每一個問題都有它的答案：replay 重建出來的還是同一個故事，連取消都一起還原。
+sibling 已經送出去了，所以它一路跑到自己結束。關卡後面那兩個呼叫從來沒開始，finish 還是替它們回答了。把歷史推導出來，每一個問題都有它的答案：重放出來的還是同一個故事，連取消都一起還原。
 
 ### 改了什麼
 
-跟 section 05 比：
+跟 Section 05 比起來：
 
 - `kernel.py`、`message.py`、`session_log.py`、`standin.py` 都原封不動搬過來。`scheduler.py` 是唯一新增的原始檔；其他改動都是把 scheduler 這條線穿過原本就有的檔案，所以跟 05 的 diff 就是這個 section 的 Mechanism，沒有別的。
 - `tools.py`：`ToolDefinition` 多了 `is_concurrency_safe`（預設 `False`），registry 和 scope 多了 `is_safe()`。pipeline 本身完全沒動。
@@ -123,7 +123,7 @@ sibling 已經送出去了，所以它一路跑到自己結束。關卡後面那
 
 ## In real dsh
 
-下面所有指過去的連結，都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。scheduler 住在 loop 那個套件裡，不在 tool runtime 裡：[`packages/core/agent-loop`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop)。
+所有指過去的連結都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。scheduler 住在 loop 那個套件裡，不在 tool runtime 裡：[`packages/core/agent-loop`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop)。
 
 | Mini-dsh | 真正的 dsh | 說明 |
 | --- | --- | --- |
@@ -134,7 +134,7 @@ sibling 已經送出去了，所以它一路跑到自己結束。關卡後面那
 | finish 照 model 給的順序 append | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts) | 結果是在 loop 裡變成 session 事件的，不是在 registry 裡；`tool/result` 事件還會帶 `sourceEventSeqs`，把每個答案接回它對應的那幾行，而 mini 靠的是 `call_id`。 |
 | 那個 `ThreadPoolExecutor` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts)：`TOOL_RUNTIME_SCHEDULER` | runtime 是透過一個具名的 seam 去拿它的 scheduler，而不是寫死一個 pool。 |
 
-真正的 scheduler 在這個 section 的 Mechanism 之上多做了什麼：
+真正的 scheduler 在這個 section 的 Mechanism 之上，還多做了這些：
 
 - **用合作的方式中止已經開跑的呼叫。** `TOOL_ABORTED` 是給送出去之後才被打斷的呼叫用的：融在一起的 signal 會傳進實作裡面，而 timeout policy（[`packages/guard/timeout-policy`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/guard/timeout-policy)）會幫 `tools/execute` 加上一個期限，同時不會把 tool 的 promise 丟在那裡不管。mini 根本不會去打斷已經開跑的實作，所以它只有送出去之前的那一種中止碼。
 - **提早結束的方式更多。** 一個 result 可以帶 `concludesTurn`，讓 turn 提早結束。mini 唯一的提早出口是 `cancel()`。
@@ -145,10 +145,10 @@ sibling 已經送出去了，所以它一路跑到自己結束。關卡後面那
 
 ## Failure modes
 
-- **誰跑完誰就 append，會讓 log 的順序變成一場搶快比賽。** 讓工作執行緒各自跑完就 append，同一個 turn 每跑一次就生出一份不一樣的對話紀錄，replay 也就不再是重建了。finish 是在同一條執行緒上照 model 給的順序 append 的，所以疊著跑這件事永遠不會出現在故事裡，只會出現在時鐘上。
+- **誰跑完誰就 append，會讓 log 的順序變成一場搶快比賽。** 讓工作執行緒各自跑完就 append，同一個 turn 每跑一次就生出一份不一樣的對話紀錄，重放也就不再是重建了。finish 是在同一條執行緒上照 model 給的順序 append 的，所以疊著跑這件事永遠不會出現在故事裡，只會出現在時鐘上。
 - **要自己標互斥的話，責任就反過來了。** 如果 tool 預設安全、要自己標成互斥，那每個忘記標的人都是在拿共用狀態賭一把。預設互斥的意思是，忘記標的人最多只是慢一點；檢查裡那個 `solo` 就證明了一個沒標的 tool 真的會自己一個人跑。
 - **半途丟下已經開跑的事情，弄壞的比救回來的多。** 一個實作寫到一半被砍掉，會留下半個檔案，和一個沒人敢信的結果。scheduler 只會拒絕開新的一批；已經送出去的，會跑完，然後把結果交回來。取消是在關卡上做的決定，不是半路衝上去把東西砍斷。
-- **被跳過的呼叫如果沒有那一行，對話紀錄就破了一個洞。** assistant 訊息上四個呼叫都寫著；把沒開始的那兩個丟掉，推導出來的歷史就會問了問題卻永遠不回答。那個合成出來的結果，就是 section 05 的規則在取消之後還活著：不管一個呼叫最後怎麼樣，它都會拿到一行回答。
+- **被跳過的呼叫如果沒有那一行，對話紀錄就破了一個洞。** assistant 訊息上四個呼叫都寫著；把沒開始的那兩個丟掉，推導出來的歷史就會問了問題卻永遠不回答。那個合成出來的結果，就是 Section 05 的規則在取消之後還活著：不管一個呼叫最後怎麼樣，它都會拿到一行回答。
 - **工作執行緒如果會寫 log，到處都得上鎖。** session log 從設計上就只有一個寫入者：prepare 和 finish 跑在 loop 那條執行緒上，工作執行緒只負責算。疊著跑這件事被關在一個階段裡面，不會漏到每一個資料結構上。
 - **安全判定就算過時了，也還是安全的。** 判定在 prepare 就定死了，所以一個 tool 就算在一批跑到一半時被卸載，位子還是留著；它的實作要嘛已經跑過，要嘛結果會說清楚發生了什麼。跑到一半再重新查一次，等於讓計畫在關卡底下偷偷變動。
 

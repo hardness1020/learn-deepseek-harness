@@ -32,7 +32,7 @@
 - **`apply_layers(layers)`**：照順序排好的 patch 層進去，一份扁平的 entry 清單出來。三個動作，全都用 id 當鍵。
 - **`mount_entries(ctx, entries, plugins)`**：載入器。等一個 entry 的工廠點名的那些 service 都在了，就把它的 plugin 掛上去；碰到永遠活不起來的 entry，就指名道姓地拒絕。
 - **`PLUGINS`**：那張名字對照表，從一個 entry 的 `name` 對到一個 `config -> plugin` 的工廠，每個工廠都宣告自己掛上去的時候需要哪些 service。
-- **`MINI_BASE`**：基礎 bundle：section 00 到 12 一路用手組出來的整套 harness，這次是十六個 entry 的資料。
+- **`MINI_BASE`**：基礎 bundle：Section 00 到 12 一路用手組出來的整套 harness，這次是十六個 entry 的資料。
 
 套用的那段很小，因為要做哪個動作，看那個 id 現在代表什麼就決定了，而換掉這件事，一行指派就寫完了：
 
@@ -66,7 +66,7 @@ while pending:
         pending.remove(row)
 ```
 
-所以 entry 的先後順序不帶任何載入語意。基礎 bundle 整份倒著寫，啟動起來還是同一個產品，因為「什麼時候掛」是由 ctx 上有哪些 service 回答的，也就是 section 01 那層底座，不是由它在檔案裡排第幾個回答的。而只要一個 entry 等的 service 永遠不會來，清查就會拒絕整次啟動，並且把它在等什麼講出來，所以半殘的產品沒辦法安安靜靜地跑起來。
+所以 entry 的先後順序不帶任何載入語意。基礎 bundle 整份倒著寫，啟動起來還是同一個產品，因為「什麼時候掛」是由 ctx 上有哪些 service 回答的，也就是 Section 01 那層底座，不是由它在檔案裡排第幾個回答的。而只要一個 entry 等的 service 永遠不會來，清查就會拒絕整次啟動，並且把它在等什麼講出來，所以半殘的產品沒辦法安安靜靜地跑起來。
 
 基礎 bundle 把這個設計問題變成日常。model 這個 entry 放在 base 裡，因為每種 mode 都有一個 model，但它的值會因 mode 而不同，所以 base 放的是一個沒話可說的 stand-in，每個 profile 再把整份 config 重講一次：
 
@@ -108,23 +108,23 @@ send("run a command")                       the composed product
   │  15  turn/end
 ```
 
-那段紀錄裡的每一個 mechanism，loop、pipeline、sandbox、prompt，全都是以一個 entry 的身分到場的。把其中一個 entry 停掉，比如 skills 那個，同一套 harness 面對同一段腳本，就會從 section 05 那道門回一句 `unknown tool 'skill'`：一個子系統被資料拿掉了，卻沒有任何一行程式碼被改過。
+那段紀錄裡的每一個 mechanism，loop、pipeline、sandbox、prompt，全都是以一個 entry 的身分到場的。把其中一個 entry 停掉，比如 skills 那個，同一套 harness 面對同一段腳本，就會從 Section 05 那道門回一句 `unknown tool 'skill'`：一個子系統被資料拿掉了，卻沒有任何一行程式碼被改過。
 
 ### 改了什麼
 
-跟 section 12 比：
+跟 Section 12 比起來：
 
 - 每一個搬過來的檔案都原封不動：`agent_loop.py`、`capabilities.py`、`inbox.py`、`jobs.py`、`kernel.py`、`message.py`、`scheduler.py`、`session_log.py`、`skills.py`、`standin.py`、`subagent.py`、`system_prompt.py`、`tools.py`。`composition.py` 是唯一新增的原始碼檔案，所以拿 12 來 diff，跑出來的就是這個 Section 的 Mechanism，沒有別的。
-- 底下沒有任何一個 mechanism 為了能被組合而改過。這些 entry 掛的，就是前面每一支檢查用手掛的同一批 plugin，走的也是 section 01 那道 `ctx.plugin()`；model 那個 entry 是透過 section 10 的 llm seam 接到 loop 的，adapter 用名字註冊，每次呼叫才解一次。
+- 底下沒有任何一個 mechanism 為了能被組合而改過。這些 entry 掛的，就是前面每一支檢查用手掛的同一批 plugin，走的也是 Section 01 那道 `ctx.plugin()`；model 那個 entry 是透過 Section 10 的 llm seam 接到 loop 的，adapter 用名字註冊，每次呼叫才解一次。
 - log 沒有多出任何新的事件型別。組合這件事發生在第一個 turn 打開之前；組出來的產品，它的紀錄跟用手搭的那份分不出差別，而這正是重點。
 - `demo.py`：Live demo 在一層 live 的 profile 底下啟動基礎 bundle：插入一個 adapter entry、插入一個 worker entry、把 scripted 的 model entry 停掉，再把 agent 那個 entry 的 config 整份換掉，讓它的 model 變成真的那個。
-- 這是最後一個 Section。section 00 到 12 一片一片教出來的 harness，現在是空清單上的十六個 entry，而「一切都是 plugin，而且每一次註冊都可以反向撤銷」這句話，最後收在資料上：一個產品，就是對著空無一物做出來的一份 diff。
+- 這是最後一個 Section。Section 00 到 12 一片一片教出來的 harness，現在是空清單上的十六個 entry，而「一切都是 plugin，而且每一次註冊都可以反向撤銷」這句話，最後收在資料上：一個產品，就是對著空無一物做出來的一份 diff。
 
 ---
 
 ## In real dsh
 
-所有連結都指向鎖定的那個 Studied version，[`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。這一層是啟動平面：[`apps/cli`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/apps/cli)、[`packages/boot/app-boot`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot)，以及 [`packages/bundle`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/bundle) 底下那些 bundle。
+所有指過去的連結都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。這一層是啟動平面：[`apps/cli`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/apps/cli)、[`packages/boot/app-boot`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot)，以及 [`packages/bundle`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/bundle) 底下那些 bundle。
 
 | Mini-dsh | 真正的 dsh | 說明 |
 | --- | --- | --- |
@@ -132,10 +132,10 @@ send("run a command")                       the composed product
 | 三個動作，換就換整份 | [`packages/bundle/base/cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/bundle/base/cordis.patch.yml)（第 6 到 10 行），由 [`vendor/include`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/include) 裡的 `applyEntryPatches` 套用 | 一個 patch 用 id 指定一個 entry，然後把它整份 `config` 換掉，從不合併；再不然就是插入新的 entry。 |
 | `MINI_BASE`，十六個 entry | [`packages/bundle/base/cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/bundle/base/cordis.patch.yml) | `@deepseek-ai/dsh-base` 有 78 個 entry；headless 模式在 [`packages/bundle/headless/cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/bundle/headless/cordis.patch.yml) 裡再加 6 個。完整，但不小。 |
 | `PLUGINS` 這張名字對照表 | [`packages/boot/app-boot/src/profile.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot/src/profile.ts)：`resolveBundleDir`（第 344 行）、`PROFILE_TEMPLATES`（第 114 到 117 行） | 名字會解到磁碟上真正的套件；出貨的樣板是 `web = [dsh-base, dsh-web-app]` 和 `headless = [dsh-base, dsh-headless]`。 |
-| 在一個全新的 `Context()` 上跑 `mount_entries` | [`packages/boot/app-boot/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot/src/index.ts)：`boot()`（第 757 行），entry 是透過 [`vendor/loader/src/config/entry.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/loader/src/config/entry.ts) 掛上去的 | `boot()` 就是先 `new Context()`，再 `ctx.plugin(Loader)`；每一個 entry 變成一次 plugin 掛載，每一次移除變成一次卸載，就是 section 01 那份約定放大到整個產品的規模。 |
+| 在一個全新的 `Context()` 上跑 `mount_entries` | [`packages/boot/app-boot/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot/src/index.ts)：`boot()`（第 757 行），entry 是透過 [`vendor/loader/src/config/entry.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/loader/src/config/entry.ts) 掛上去的 | `boot()` 就是先 `new Context()`，再 `ctx.plugin(Loader)`；每一個 entry 變成一次 plugin 掛載，每一次移除變成一次卸載，就是 Section 01 那份約定放大到整個產品的規模。 |
 | 先跑到停、再清查的那一輪 | [`packages/boot/app-boot/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot/src/index.ts)：`assertEntriesActivated`（第 700 到 725 行） | entry 的順序不帶任何載入語意；要不要活起來是由 service 到齊了沒決定的，而清查會把還在等缺席 service 的 entry 一個個點名。 |
 
-真正的組合這一層，在這個 Section 的 Mechanism 之上還多做了什麼：
+真正的組合這一層，在這個 Section 的 Mechanism 之上，還多做了這些：
 
 - **一份活的 entry 清單。** Loader 自己就是一個 plugin，而那份清單一直是活的：改一個 entry，在跑著的 process 裡就會剛好掛上或卸下那一點差異，HMR 也是搭同一套機器。HMR 在這次重建的 Ceiling 之上：只在這裡指給你看，不重建。
 - **profile 就是產品。** `dsh --profile web` 和 `dsh --profile headless`（[`apps/cli/src/args.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/apps/cli/src/args.ts)）會從 `PROFILE_TEMPLATES` 挑一疊 bundle：同一支執行檔，兩個產品，差別只在清單。

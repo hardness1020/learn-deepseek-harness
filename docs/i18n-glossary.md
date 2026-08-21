@@ -36,6 +36,12 @@ does.
 `zh-CN` is derived from `zh-TW`: character conversion plus the regional term
 swaps below. Never a bare character conversion.
 
+Chinese prose is never hard-wrapped, however the English file is wrapped. One
+paragraph is one line. Markdown turns a soft line break into a space, and
+between two Chinese characters that space is visible in the rendered page, so a
+wrapped translation reads with stray gaps GitHub puts there. Tables, code, and
+everything else copied verbatim keep the English line structure.
+
 ## Voice
 
 - Oral and conversational, matching the register of the English.
@@ -148,14 +154,17 @@ key
 identifier in the source: model, log, turn, step, seam, service, surface, bus,
 request, entry, job, run, child, parent, chunk, seq, fiber, effect, disposer,
 adapter, schema, policy, profile, config, patch, handle, process, waterfall,
-guard, hook, listener, payload, store
+guard, hook, listener, payload, store, callable, bundle, UI, and the three
+capability roles Definition, Provider, Consumer
 
-Two of those were split across the first four batches and are now settled.
+Three of those were split across the first four batches and are now settled.
 `bus` and `service` stay English because they name Cordis APIs, the event bus
 behind `on` / `emit` and the `Service` a fiber provides. `thread` goes the other
 way, into 執行緒 / 线程, because it is a plain OS word rather than one of the
-repo's nouns. When a term is a dsh noun, keep it English; when it is ordinary
-computing vocabulary with a settled Chinese term, translate it.
+repo's nouns. The rule: when a term is a dsh noun, keep it English; when it is
+ordinary computing vocabulary with a settled Chinese term, translate it. That is
+why `replay` is 重放 everywhere and `callable` stays English, the Python type
+name the Model seam is written against.
 
 **Repo terms defined in `CONTEXT.md`**: dsh, Mini-dsh, Carry-forward, Lens,
 Opening, In-real-dsh, Failure modes, Offline check, Live demo, Studied version,
@@ -196,7 +205,8 @@ enough.
 | interface | 介面 | 接口 |
 | abstract base class | 抽象基底類別 | 抽象基类 |
 | thread | 執行緒 | 线程 |
-| exception | 例外 | 异常 |
+| exception (thrown) | 例外 | 异常 |
+| exception (to a rule) | 例外 | 例外 |
 | object | 物件 | 对象 |
 | type | 型別 | 类型 |
 | class | 類別 | 类 |

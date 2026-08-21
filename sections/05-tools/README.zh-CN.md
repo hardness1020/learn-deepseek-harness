@@ -10,11 +10,11 @@ Section 04 的 loop 只会讲话。每个 step 都以 `"completed"` 结束，因
 
 最直觉的做法，是弄一个装着函数的 dict。用名字查出来、调用它、把它返回的东西 append 进去。名字查不到就抛出异常。参数不对就抛出异常。政策说不行，那就在调用之前先抛出异常。
 
-但这些异常每一个都落在一个 turn 的中间。带着那次调用的 assistant 消息早就进了 log；异常会一路把 `send()` 拆回去，留下一个没有答案的问题。下一次推导出来的东西，会让 model 看到一段讲到一半就断掉的对话记录，而 replay 只会把同一个坏掉的故事再重建一次。
+但这些异常每一个都落在一个 turn 的中间。带着那次调用的 assistant 消息早就进了 log；异常会一路把 `send()` 拆回去，留下一个没有答案的问题。下一次推导出来的东西，会让 model 看到一段讲到一半就断掉的对话记录，而重放只会把同一个坏掉的故事再重建一次。
 
 所以：为什么被拒绝或出错的调用，还是会产生一条正常的 `tool/result`？
 
-因为对话记录就是那份契约。model 一定要看到一段在同一个 turn 里前后对得上的历史，replay 也一定要能把它重建回来，所以不管一个调用最后怎么样，它都会拿到一行回答。要撑住这件事，tool 这一层必须：
+因为对话记录就是那份契约。model 一定要看到一段在同一个 turn 里前后对得上的历史，重放也一定要能把它重建回来，所以不管一个调用最后怎么样，它都会拿到一行回答。要撑住这件事，tool 这一层必须：
 
 1. 把 tool 放在一个**有作用域的 registry** 里：一层 global，加上每个 agent 作用域各一层；作用域那一层会盖掉 global 的同名 tool，而套用到这个作用域的每一条限制，都会跟目前看得到的那组 tool 取交集。
 2. 每一个调用都走同一条固定的 pipeline：**pre -> ask -> guard -> execute -> post**，永远照这个顺序。
@@ -81,7 +81,7 @@ def _run(self, call, scope):
         return self._result(call, True, f"{type(exc).__name__}: {exc}")
 ```
 
-loop 把这个漏斗接进 section 04 的 step 里。这就是 agent loop 当初空在那里、等人来接的 `None` 那条分支：
+loop 把这个漏斗接进 Section 04 的 step 里。这就是 agent loop 当初空在那里、等人来接的 `None` 那条分支：
 
 ```python
 if not final.tool_calls:
@@ -118,7 +118,7 @@ send("what is the wifi password?")
   │  18  turn/end
 ```
 
-结果进了 surface，所以第二次推导出来的是 `user`、`assistant`（带着它发出的调用）、`tool`：model 把自己发的调用和拿回来的答案，都当成普通的历史在读。section 02 早就默默替这件事铺好路了：从 surface 存在的那一天起，`tool/result` 就在 `SURFACE_TYPES` 里面。
+结果进了 surface，所以第二次推导出来的是 `user`、`assistant`（带着它发出的调用）、`tool`：model 把自己发的调用和拿回来的答案，都当成普通的历史在读。Section 02 早就默默替这件事铺好路了：从 surface 存在的那一天起，`tool/result` 就在 `SURFACE_TYPES` 里面。
 
 现在把同一个 turn 再跑一次，换成一个会拒绝的 guard、一段会跑爆的实现，或是一个根本不存在的名字。log 记下来的故事形状一模一样，只有 `is_error` 和 `content` 不同。turn 活下来了，model 读得到哪里出错，而 Offline check 会把四种失败全塞进同一个 step，用来证明没有任何异常逃得出 `send()`。
 
@@ -126,20 +126,20 @@ send("what is the wifi password?")
 
 ### 改了什么
 
-跟 section 04 比：
+跟 Section 04 比起来：
 
 - `kernel.py` 原封不动搬过来。`tools.py` 是唯一新增的源文件；其他改动都是把 tool 这条线穿过原本就有的文件，所以跟 04 的 diff 就是这个 section 的 Mechanism，没有别的。
-- `message.py`：`Message` 多了 `tool_calls`（assistant 用）和 `call_id`（tool 用），两个都有默认值，所以 section 04 的每一个 Message 读起来都跟以前一样。
+- `message.py`：`Message` 多了 `tool_calls`（assistant 用）和 `call_id`（tool 用），两个都有默认值，所以 Section 04 的每一个 Message 读起来都跟以前一样。
 - `standin.py`：Model seam 多了一个 `tools` 参数，Scripted stand-in 直接忽略它；而事先写好的回应可以是一个带 `tool_calls` 的 dict，这样会用到 tool 的 turn 也能离线写成脚本。
 - `session_log.py`：`derive_messages()` 会把冻起来的 payload 里的 `tool_calls` 和 `call_id` 解冻，放回 Message 上。`SURFACE_TYPES` 完全没动。
-- `agent_loop.py`：Agent 现在除了 session 和 Model seam，还会收下自己的 `ToolScope`；step 会把 schema 跟着请求一起送出去、记进 `request/header`、把调用丢进 pipeline 跑，并且把 section 04 空在那里的 `reason None` 那条分支补上。
+- `agent_loop.py`：Agent 现在除了 session 和 Model seam，还会收下自己的 `ToolScope`；step 会把 schema 跟着请求一起送出去、记进 `request/header`、把调用丢进 pipeline 跑，并且把 Section 04 空在那里的 `reason None` 那条分支补上。
 - `demo.py`：Live demo 现在会真的用到 tool，中间还有一次 guard 拒绝，model 得自己读懂再解释给你听。
 
 ---
 
 ## In real dsh
 
-下面所有指过去的链接，都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。tool 这一层住在 [`packages/core/tools`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools)，作用域的部分在 [`packages/core/scope`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/scope)。
+所有指过去的链接都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。tool 这一层住在 [`packages/core/tools`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools)，作用域的部分在 [`packages/core/scope`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/scope)。
 
 | Mini-dsh | 真正的 dsh | 说明 |
 | --- | --- | --- |
@@ -149,13 +149,13 @@ send("what is the wifi password?")
 | `guard()` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts)：`ToolGuard` | `(execution) => string \| undefined`，只能拒绝，而且是同步的，在批准之后才在 pipeline 里跑。这跟 `packages/guard/*` 那些 plugin 不一样，那些只是普通的事件监听器。 |
 | `post()` 的复审 | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts)：`tools/post-execute` | 一个 waterfall，产出 `PostToolDecision = accept \| block`，另外还负责往上补东西（重复调用同一个 tool 的提醒就是搭这班车）。 |
 | 那个 result dict | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts)：`ToolExecutionSuccess` / `ToolExecutionFailure` | 一样是这个二分法，`isError: false \| true`，在变成 `tools/result` 事件之前会先被冻起来。 |
-| loop 里那个一个一个跑的 for 循环 | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts)：`executeToolCalls` | 真正的 loop 从来不会直接调用 `ctx.tools.execute()`；推动这些调用的是一个四阶段的 scheduler。那个 scheduler 就是 section 06 的 Mechanism。 |
+| loop 里那个一个一个跑的 for 循环 | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts)：`executeToolCalls` | 真正的 loop 从来不会直接调用 `ctx.tools.execute()`；推动这些调用的是一个四阶段的 scheduler。那个 scheduler 就是 Section 06 的 Mechanism。 |
 
-真正的 tool 这一层，在这个 section 的 Mechanism 之上多做了什么：
+真正的 tool 这一层，在这个 section 的 Mechanism 之上，还多做了这些：
 
 - **运行那一段外面还包了一层 waterfall。** `tools/execute` 把实现包起来，让 plugin 可以帮它设时间上限：timeout policy（[`packages/guard/timeout-policy`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/guard/timeout-policy)）自己定义了 `TOOL_TIMEOUT`，而且是用合作的方式包住，不会把 tool 的 promise 丢在那里不管。mini 是直接把实现跑下去。
 - **从头到尾都有类型的 schema。** `defineTool()` 会拿真的 schema 去验参数，输出也一起验；`finalizeContent` 则决定 model 读到的东西长什么样。mini 只验参数名字对不对得上。
-- **可以并行送出去跑。** `executeToolCalls` 跑的是一个 `prepare / dispatch / finalize / finish` 的 scheduler：可以并行跑的调用会叠在一起跑，互斥的调用会卡成一道关卡，而还没开始就被中止的调用会拿到一个合成出来的结果（`TOOL_ABORTED_BEFORE_DISPATCH`），这样 replay 才还算数。这一整套都是 section 06 的事。
+- **可以并行送出去跑。** `executeToolCalls` 跑的是一个 `prepare / dispatch / finalize / finish` 的 scheduler：可以并行跑的调用会叠在一起跑，互斥的调用会卡成一道关卡，而还没开始就被中止的调用会拿到一个合成出来的结果（`TOOL_ABORTED_BEFORE_DISPATCH`），这样重放才还算数。这一整套都是 Section 06 的事。
 - **result 能做的事更多。** 一个 result 可以带 `concludesTurn`，让 turn 提早结束；`tools/result` 事件还会记下 `sourceEventSeqs`；而且只要看得到的那组 tool 有变动，runtime 就会发出 `tools/change`。
 - **`ask` 真的有人回答。** 人看到的那个批准提示是 UI，落在 Ceiling 之上；mini 把这个 seam 收成一个 `asker` callable，Offline check 直接在代码里回答它。
 
@@ -163,13 +163,13 @@ send("what is the wifi password?")
 
 ## Failure modes
 
-- **用异常来拒绝，会把对话记录撕开。** pipeline 说不的时候，带着那次调用的 assistant 消息早就在 log 里了。不回答而是抛异常，推导出来的历史就会停在一个 model 永远等不到回音的问题上；replay 只会把同一个洞再挖一次。不管判决是什么，那一行 result 就是回答。
+- **用异常来拒绝，会把对话记录撕开。** pipeline 说不的时候，带着那次调用的 assistant 消息早就在 log 里了。不回答而是抛异常，推导出来的历史就会停在一个 model 永远等不到回音的问题上；重放只会把同一个洞再挖一次。不管判决是什么，那一行 result 就是回答。
 - **默默跳过，model 什么都学不到。** 把被拒绝的调用直接丢掉，model 要么永远等下去，要么永远重发。`is_error` 加上一个理由才是信息：检查里的 model 在同一个 step 里读到四种不同的失败，还是把 turn 走完了。
 - **没有人批准的 ask，只能拒绝。** 如果默认放行，那一个什么都还没设置的 mini-dsh 反而是最宽松的。这道门默认是关的，而检查会证明：只要有人来回答，同一个调用就跑得起来。
 - **guard 如果能放行，它们就会互相打架。** guard 只能拒绝，所以方向是单一的：任何一个 guard 都只会让能跑的事情变少，顺序因此永远不重要。一个能放行的 guard，会依照注册的先后去盖掉另一个的拒绝。
 - **不能信任的是实现那一段。** 一个会抛异常的 tool 是很平常的事，接住它，包成 result 送回去。不能抛异常的是 pipeline 自己，所以参数不对和名字查不到也一样要变成 result，而不是拿 assert 去挡。
 - **撤不掉的注册会活得比它的 plugin 还久。** `register` / `restrict` / `guard` 每一个都会交回自己的 undo，让 fiber 去收。检查会在对话进行到一半时卸载一个 tool plugin：下一行 `request/header` 什么都没提供，而去调用那个已经消失的 tool，也不过就是另一个正常的结果。
-- **不取交集，作用域就只会越长越大。** 盖掉只能新增或替换，真正让范围变小的是限制。把所有适用的限制都取交集，代表任何一层都能把一个作用域圈起来；section 12 让 subagent 只拿到父层 tool 的一部分，靠的就是这件事。
+- **不取交集，作用域就只会越长越大。** 盖掉只能新增或替换，真正让范围变小的是限制。把所有适用的限制都取交集，代表任何一层都能把一个作用域圈起来；Section 12 让 subagent 只拿到父层 tool 的一部分，靠的就是这件事。
 
 ---
 

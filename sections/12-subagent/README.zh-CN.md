@@ -6,9 +6,9 @@
 
 > parent 叫一个名字来帮忙，拿回来的是一个可以操作它的 handle。名字后面可能是一条线程、一个 process，也可能是网络另一头的另一个产品；契约就是那个 run，至于是谁在跑，不关任何人的事。
 
-section 11 教会 mini-dsh 把工作丢到后台，但所有的思考还是挤在同一个 context window 里。叫 agent 去跑个腿，摘要一个包、追一个一直失败的测试，这趟腿的完整对话记录就会永远跟在 parent 的历史里，把它原本要服务的正事挤掉。委派就是出路：把任务交给一个有自己的 session、自己的 tool 作用域、自己的 context 的 child，然后只拿回一个答案。
+Section 11 教会 mini-dsh 把工作丢到后台，但所有的思考还是挤在同一个 context window 里。叫 agent 去跑个腿，摘要一个包、追一个一直失败的测试，这趟腿的完整对话记录就会永远跟在 parent 的历史里，把它原本要服务的正事挤掉。委派就是出路：把任务交给一个有自己的 session、自己的 tool 作用域、自己的 context 的 child，然后只拿回一个答案。
 
-最直觉的做法是继承。section 04 的 `Agent` 早就会跑 turn 了，所以 `class Subagent(Agent)` 看起来像是站在起跑线前面。但回答一次委派的，不一定是这个 process 里的 agent。真正的 dsh 出货的 Provider 里，有的会 fork 出新的 process，有的通过一套传输协议去驱动另一个产品，有的干脆包住另一套 harness；要是拿基类当契约，这些人全都得假装自己内部长得像 Agent，只为了挂得进 registry。
+最直觉的做法是继承。Section 04 的 `Agent` 早就会跑 turn 了，所以 `class Subagent(Agent)` 看起来像是站在起跑线前面。但回答一次委派的，不一定是这个 process 里的 agent。真正的 dsh 出货的 Provider 里，有的会 fork 出新的 process，有的通过一套传输协议去驱动另一个产品，有的干脆包住另一套 harness；要是拿基类当契约，这些人全都得假装自己内部长得像 Agent，只为了挂得进 registry。
 
 所以：为什么接口要架在“开一个 child、交回一次 run”上面，而不是继承出一个 agent 子类？
 
@@ -16,10 +16,10 @@ section 11 教会 mini-dsh 把工作丢到后台，但所有的思考还是挤�
 
 1. 用名字记住 Provider：一个 ctx key 底下一份 registry，每次注册都交回自己的撤销动作。
 2. Provider 就是一份 callable 的契约：解好的启动请求进去，一个 run 出来，registry 从来不去看它背后是什么。
-3. 让 run 就是 parent 这一侧契约的全部：`cancel`、`done`、`read_output`，刻意用 section 11 那组协议三元组。
+3. 让 run 就是 parent 这一侧契约的全部：`cancel`、`done`、`read_output`，刻意用 Section 11 那组协议三元组。
 4. 前台模式：这次 tool 调用就卡在 `done` 上等，然后把 child 的回复当答案交出去。
-5. 后台模式：把同一组三元组原封不动交给 job registry，于是 subagent 就成了第二个生产者，跟 shell 平起平坐，而 section 11 的控制用 tool 一行新代码都不用写就能服务它。
-6. 所有的拒绝都走 section 05 那道门：不认识的名字、没挂 job registry、child 炸掉，全都变成正常的 `is_error` 结果。
+5. 后台模式：把同一组三元组原封不动交给 job registry，于是 subagent 就成了第二个生产者，跟 shell 平起平坐，而 Section 11 的控制用 tool 一行新代码都不用写就能服务它。
+6. 所有的拒绝都走 Section 05 那道门：不认识的名字、没挂 job registry、child 炸掉，全都变成正常的 `is_error` 结果。
 
 ---
 
@@ -44,7 +44,7 @@ def start(self, name, task):
     return provider({"id": f"sub-{self._count}", "task": task})
 ```
 
-而交回来的东西就只有这个 run。它刻意做成 section 11 的协议三元组，因为这个形状早就回答了 parent 对一件自己已经抓不住的工作可能会问的每一个问题：
+而交回来的东西就只有这个 run。它刻意做成 Section 11 的协议三元组，因为这个形状早就回答了 parent 对一件自己已经抓不住的工作可能会问的每一个问题：
 
 ```python
 @dataclass(frozen=True)
@@ -77,7 +77,7 @@ job_id = jobs.start("subagent", f"{name}: {task}", owner, run)
 return f"started {job_id}"
 ```
 
-前台模式就地等。后台模式把这个 run 包成生产者协议交给 section 11，之后的每一件事都归它：id、认人、先到先算的定案，还有走 inbox 的完成通知。job registry 是用可有可无的查找拿到的，跟真正的 dsh 一样，所以一个没挂 jobs 的 harness 会大声拒绝后台委派，而不是偷偷把 turn 卡在那里。
+前台模式就地等。后台模式把这个 run 包成生产者协议交给 Section 11，之后的每一件事都归它：id、认人、先到先算的定案，还有走 inbox 的完成通知。job registry 是用可有可无的查找拿到的，跟真正的 dsh 一样，所以一个没挂 jobs 的 harness 会大声拒绝后台委派，而不是偷偷把 turn 卡在那里。
 
 ```text
 delegation, both ways
@@ -114,14 +114,14 @@ meanwhile, the child, session sub-1: an ordinary transcript
   │   9  turn/end
 ```
 
-换成后台模式，同一个 run 改搭 section 11：parent 的 turn 收在 `"started job-1"` 上，child 在 parent 闲着的时候思考，通知再以一个 followup 的 turn 到达，在那里 `job_output` 给出 child 的回复，`job_list` 报出来的种类是 `subagent`。控制用的 tool 没有变，变的是生产者。
+换成后台模式，同一个 run 改搭 Section 11：parent 的 turn 收在 `"started job-1"` 上，child 在 parent 闲着的时候思考，通知再以一个 followup 的 turn 到达，在那里 `job_output` 给出 child 的回复，`job_list` 报出来的种类是 `subagent`。控制用的 tool 没有变，变的是生产者。
 
 ### 改了什么
 
-跟 section 11 比：
+跟 Section 11 比起来：
 
 - 每一个搬过来的文件都原封不动：`agent_loop.py`、`capabilities.py`、`inbox.py`、`jobs.py`、`kernel.py`、`message.py`、`scheduler.py`、`session_log.py`、`skills.py`、`standin.py`、`system_prompt.py`、`tools.py`。`subagent.py` 是唯一新增的源代码文件，所以拿 11 来 diff，跑出来的就是这个 Section 的 Mechanism，没有别的。
-- 这个 Mechanism 是纯粹的组合：child 是通过 section 02 的 sessions、section 04 的 agents、section 05 的 tool 这几个 service 开出来的；run 就是 section 11 的协议三元组；后台模式把这组三元组交给 job registry，让 subagent 成为 section 11 早就预告过的第二个生产者。
+- 这个 Mechanism 是纯粹的组合：child 是通过 Section 02 的 sessions、Section 04 的 agents、Section 05 的 tool 这几个 service 开出来的；run 就是 Section 11 的协议三元组；后台模式把这组三元组交给 job registry，让 subagent 成为 Section 11 早就预告过的第二个生产者。
 - log 没有多出任何新的事件类型。一次委派在 parent 的 log 里摊在台面上的一生，就是一行 `tool/call` 加一行 `tool/result`；剩下的故事是它自己那个普通的 session。
 - `demo.py`：Live demo 在前台委派给一个对着真 API 跑的 child，把它的答案引述出来，接着再把第二个 child 丢到后台，让它的完成通知在一个 parent 没要求过的 turn 里把 parent 叫醒。
 
@@ -129,18 +129,18 @@ meanwhile, the child, session sub-1: an ordinary transcript
 
 ## In real dsh
 
-所有链接都指向锁定的那个 Studied version，[`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。这一层对应的包家族是 [`packages/subagent`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent)。
+所有指过去的链接都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。这一层对应的包家族是 [`packages/subagent`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent)。
 
 | Mini-dsh | 真正的 dsh | 说明 |
 | --- | --- | --- |
-| `SubagentRuntime`，ctx key `"subagents"` | [`packages/subagent/subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/index.ts)：`SubagentRuntime` | 这个 runtime（第 171 行）是一个具体的 `Service`，跟 section 11 那个抽象的 `JobRegistry` 不一样：它守的 seam 是 Provider 的接口，不是 registry 本身。 |
+| `SubagentRuntime`，ctx key `"subagents"` | [`packages/subagent/subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/index.ts)：`SubagentRuntime` | 这个 runtime（第 171 行）是一个具体的 `Service`，跟 Section 11 那个抽象的 `JobRegistry` 不一样：它守的 seam 是 Provider 的接口，不是 registry 本身。 |
 | Provider 是一份 callable 的契约 | [`packages/subagent/subagent/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/types.ts)：`SubagentProvider` | 这个设计问题直接写在类型系统里：`SubagentProvider`（第 285 行）是一个 TS 接口，不是 `Service`，也不是 `Agent` 的子类；任何能把解好的启动请求变成一个 `SubagentRun` 的东西都算数。 |
-| `in_process_provider` | [`packages/subagent/subagent-in-process-driver/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent-in-process-driver/src/index.ts) | 第 132 行是同一招：child 是用 `parent.ctx.agents.create()` 建出来的，走的是 section 04 那道普通的门，不是什么私有的构造函数。 |
+| `in_process_provider` | [`packages/subagent/subagent-in-process-driver/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent-in-process-driver/src/index.ts) | 第 132 行是同一招：child 是用 `parent.ctx.agents.create()` 建出来的，走的是 Section 04 那道普通的门，不是什么私有的构造函数。 |
 | 后台模式下交给 jobs 的那个 run | [`packages/subagent/subagent/src/run-settlement.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/run-settlement.ts)、[`packages/subagent/tool-subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/tool-subagent/src/index.ts)（第 408 到 423 行） | 一次性的后台委派就是 `jobs.start({kind: 'subagent', ...})`：`JobKindMap` 里的第二个种类，跟 `bash` 平起平坐，正是这个 Section 重建的那次交棒。 |
 | `jobs = ctx.get("jobs")`，可有可无的查找 | [`tool-subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/tool-subagent/src/index.ts)（第 402 到 405 行） | 真正的委派 tool 是用 `ctx.get('jobs')` 拿到 jobs，不是 `inject`：没挂 registry 就是没有后台模式，绝不会偷偷退回前台跑。 |
 | `subagent` 这个 tool | [`packages/subagent/tool-subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/tool-subagent/src/index.ts) | 出货的 Consumer；连它的 tool 名字都可以设置，因为 model 看到的 schema 属于 Consumer，永远不属于 Provider。 |
 
-真正的 subagent 这一层，在这个 Section 的 Mechanism 之上还多做了什么：
+真正的 subagent 这一层，在这个 Section 的 Mechanism 之上，还多做了这些：
 
 - **可以接着用的 child。** `startContinuable()` 加上一个续接管理器，让 child 可以跨 turn 活着，parent 在两个 turn 之间也找得到它。照 [`run-settlement.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/run-settlement.ts)（第 2 到 4 行），只有一次性的后台模式会碰 jobs；可以接着用的 child 完全不经过 registry。这种 subagent 在这次重建的 Ceiling 之上：只在这里指给你看，不重建。
 - **一整排 Provider。** `subagent-spawn-in-process`、`subagent-fork-in-process`、`subagent-acp`、`subagent-codex`、`subagent-claude-code`、`subagent-dsh-sdk`：选接口而不选继承这个主张，在这里变成看得到的东西。其中好几个背后根本连一个 `Agent` 都没有，这就是 registry 从来不开口要 Agent 的原因。
@@ -153,8 +153,8 @@ meanwhile, the child, session sub-1: an ordinary transcript
 
 - **拿子类当契约，等于把 Provider 的名单封顶。** 只要规定一定要是 `Subagent(Agent)`，那每一个 Provider 都得是这个 process 里的 agent；fork 出去的、远程的、别的产品的那些 Provider，不是根本不能存在，就是得假扮成 Agent 的内部长相才挂得上去。四个动词只要求 parent 真正会做的事：开始、停止、等待、读取。
 - **跟 parent 共用 session 的 child，不叫委派。** 把这趟腿的每一行都写进 parent 的 log，它的完整对话记录就会永远跟在 parent 的 context 里，而这正是委派要躲掉的那笔代价。两份 log，一个答案跨过来：parent 留下一次调用和一条结果，child 留下其他全部。
-- **没有 cancel 的 run，就是一个没人叫得停的 child。** 前台至少还能等它跑完；但一个后台的 child，如果三元组里没有 `cancel`，`job_kill` 就是在说谎，它把结果定成“killed”，工作却还在跑。三元组把停止键一起带着，就是为了让 section 11 的认人背后真的有东西。
-- **不认识的名字直接抛异常，会把对话记录撕破。** 没有人注册过的名字丢出来的 `LookupError`，必须从 section 05 的 pipeline 走出去，变成一条正常的 `is_error` 结果；放它逃出去，model 问的问题就没有答案，重放也会在同一行断掉。
+- **没有 cancel 的 run，就是一个没人叫得停的 child。** 前台至少还能等它跑完；但一个后台的 child，如果三元组里没有 `cancel`，`job_kill` 就是在说谎，它把结果定成“killed”，工作却还在跑。三元组把停止键一起带着，就是为了让 Section 11 的认人背后真的有东西。
+- **不认识的名字直接抛异常，会把对话记录撕破。** 没有人注册过的名字丢出来的 `LookupError`，必须从 Section 05 的 pipeline 走出去，变成一条正常的 `is_error` 结果；放它逃出去，model 问的问题就没有答案，重放也会在同一行断掉。
 - **偷偷退回前台，会让后台模式变成一句谎话。** 没挂 job registry 的时候，安静地就地把任务跑完，等于把 turn 卡住，而且卡的时间刚好就是 model 想避开的那段等待，还连一个可以拿来杀的 id 都没有。tool 选择大声拒绝，而这次拒绝是一条普通的结果，model 可以绕过它另外想办法。
 
 ---
