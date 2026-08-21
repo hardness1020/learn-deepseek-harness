@@ -2,7 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Every registration is an undo the framework collects. Unloading a plugin is running its undos in reverse.
+> Everything in this harness mounts and unmounts at runtime. Cleanup by
+> convention leaks the moment one plugin forgets, so registering something
+> hands the framework the undo.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
 subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,

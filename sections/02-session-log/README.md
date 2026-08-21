@@ -2,8 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> The model's history is not a list you keep. It is a view you derive, from a
-> log you never edit.
+> A turn has several readers, and one message list can only serve one of
+> them. So record everything once, and work out what the model sees from
+> that record.
 
 An agent turn produces far more than messages: streamed chunks, tool calls and results,
 turn markers, request headers.

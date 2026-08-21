@@ -2,8 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> The log never forgets. Compaction only changes which part of the story the
-> model gets retold.
+> History has to shrink eventually, but the log is append-only and editing
+> it breaks everything built on it. The model never reads the log, so
+> shrink the view instead.
 
 Conversations outgrow the context window. Sooner or later the model's history
 must shrink: a long stretch of old exchanges gives way to a short summary.

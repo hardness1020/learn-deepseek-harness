@@ -2,10 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> The parent asks a name for help and takes back a handle. Behind
-> the name might be a thread, a process, or another product on the
-> far end of a wire; the contract is the run, and the runner is
-> nobody's business.
+> A side errand should not spend the parent's context. Subclassing the
+> agent assumes whatever answers it lives in this process, and often it
+> does not. So the parent asks a name and takes back a run.
 
 Section 11 taught mini-dsh to put work in the background, but every
 thought still happens in one context window. Send the agent on a

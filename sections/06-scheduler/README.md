@@ -2,8 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Safe calls overlap, an exclusive call stands alone, and reality
-> finishes in whatever order it likes. The log never does.
+> Running calls one at a time wastes real time. Letting them land in the
+> log in whatever order they finish makes replay a race. So overlap the
+> work, but fix the order.
 
 Section 05 runs a reply's calls with a for-loop: one call, one answer,
 next call. That was invisible while every reply carried one call. Real

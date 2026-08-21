@@ -2,8 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> The loop holds no state worth saving. Every step it rereads the log, asks
-> the model once, and writes the answer back.
+> A driver has to take the input, ask the model, and write the answer down.
+> Remembering the conversation would make a second copy of the truth, so
+> this driver remembers nothing.
 
 Sections 00 to 03 built a session log that can derive model history, stream
 chunks, and compact. But nothing drives it. Every check so far hand-cranked

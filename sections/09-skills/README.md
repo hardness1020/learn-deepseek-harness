@@ -2,9 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A catalog is a menu, not the meal. Every request pays for the
-> names and a line apiece; the full text arrives only when the
-> model orders it.
+> Instruction text is too big to ship every step and too useful to leave
+> out. So the request carries only the names, and the text itself is
+> fetched when something wants it.
 
 Section 08's request carries stable system text and a changing
 snapshot, but every word it carries still ships every step.

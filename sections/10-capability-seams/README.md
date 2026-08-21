@@ -2,9 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> The model sees a tool, the tool sees a contract, and only the
-> provider sees the machine. Swap the machine; the other two rooms
-> never hear about it.
+> Write a capability into the tool body and the model's view, the contract,
+> and the machine come as one piece. Split all three on day one and nothing
+> ever swaps. So split when some code must not know which machine answers.
 
 Ten sections in, mini-dsh still touches nothing outside its own
 log. The first real capability, reading a file or running a

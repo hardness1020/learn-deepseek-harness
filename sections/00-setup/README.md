@@ -2,8 +2,8 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A model is just a callable that streams chunks and ends with a message.
-> Anything speaking that contract can sit behind the seam, including a script.
+> Every section proves itself with a check you can run. A real model gives
+> two different answers to the same question, so a script takes its place.
 
 This tutorial rebuilds a harness whose every mechanism orbits a model call:
 history is derived for the model, tools are called by the model, prompts are

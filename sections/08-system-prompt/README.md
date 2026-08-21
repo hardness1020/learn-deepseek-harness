@@ -2,9 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> The system text is a promise: the same words, in the same order,
-> every single step. Anything that cannot keep that promise rides
-> along as a message.
+> Several parts of the harness each own a piece of what the model is told,
+> and their words must land identically every step. So anything that
+> changes between steps cannot live there.
 
 Section 07's request is honest but bare. `_step()` pulls schemas
 straight off the tool registry and ships no system text at all: the
