@@ -16,7 +16,7 @@ Every one of those mechanisms orbits a single act: asking a model for a
 response. History is derived for the model, tools are called by the model,
 prompts are assembled for the model.
 
-So the rebuild needs a way to ask, and the obvious way is to import a
+So mini-dsh needs a way to ask, and the obvious way is to import a
 provider's SDK and call it wherever an answer is needed.
 
 That spreads the provider through the harness. Its request format reaches the

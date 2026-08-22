@@ -6,11 +6,11 @@
 
 > harness 裡到處都要問 model。要是每個地方都各自呼叫某一家 provider 的 SDK，它的格式就會跟著跑進 prompt、跑進 log、跑進 loop。所以核心只認一套自己的訊息格式，provider 收在一個隨時換得掉的呼叫後面。
 
-DeepSeek Harness（dsh）是一套貨真價實的 agent harness：一個大型的 TypeScript 程式碼庫，裡面的 tool、prompt，甚至一整個子系統，都是 plugin，掛在一個正在跑的 kernel 上。這份 tutorial 只用 Python 標準函式庫，把它重建成一個最小版本，一個 Section 只加一個 Mechanism。
+DeepSeek Harness（dsh）是一套貨真價實的 agent harness：一個大型的 TypeScript 程式碼庫，裡面的 tool、prompt，甚至一整個子系統，都是 plugin，掛在一個正在跑的 kernel 上。這份 tutorial 只用 Python 標準函式庫，把它縮成一個最小版本，一個 Section 只加一個 Mechanism。
 
 這些 Mechanism 全都繞著同一件事轉：問 model，然後等它回話。歷史要整理成 model 讀得下去的樣子，tool 要等 model 開口才會被叫起來，prompt 要先組好才餵得進去。
 
-所以重建的時候，第一件要決定的事就是「要怎麼問」。最直覺的做法，是 import 某一家 provider 的 SDK，哪裡要問就在哪裡呼叫它。
+所以 mini-dsh 也得有一套「怎麼問」的辦法。最直覺的做法，是 import 某一家 provider 的 SDK，哪裡要問就在哪裡呼叫它。
 
 這麼做，等於讓那一家 provider 滲進整套 harness 的每個角落。組 prompt 的程式碼會照著它的請求格式寫，log 裡存的是它回傳的物件，compaction 認得的是它那套 role 名稱；哪天想換一家，這三個地方都得跟著改。
 
@@ -118,8 +118,8 @@ Section 00 前面沒有東西，所以這一格記的是後面每個 Section 都
 
 - **一個會做路由的 adapter registry。** `ctx.llm` 同時放著好幾個 adapter，用 provider 名字當鍵；至於某一套部署要拿哪個 model 當預設，本身又是一個 plugin（[`packages/core/agent-default-model`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-default-model)，`ctx.agentDefaultModel`）。mini 這邊一次只有一個 callable，要到 Section 10 才會給 seam 一個 service 的位置。
 - **串流上可以掛 middleware。** 一道 `llm/stream` waterfall（`index.ts` 第 51 到 60 行）讓 plugin 可以包住或旁觀每一次 model 呼叫，而重試會以 `llm/retry` 這種 session 事件出現在 log 裡。
-- **真的照著各家協定講話的 adapter。** 內建的 provider [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 和 [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts) 直接照各家自己的協定講話。Ceiling：mini-dsh 不會重建任何一個這種 adapter；它唯一碰到真 API 的程式碼，是 Live demo 在 `demo.py` 裡那段大約 20 行、把訊息翻成 Anthropic 格式的東西（Section 04 以後），而且它待在離線核心外面。
-- **折成一份，而不是拆成三份。** 真正的 dsh 通常會把一個能力拆成三邊：一個套件定義介面，一些套件提供它，一些套件使用它。llm seam 把定義端和使用端折進同一個套件，因為使用它的就是 agent loop 本身，不是一組隨時可以換掉的 tool。Section 10 會把這個 seam 和這條折疊規則一起重建一遍。
+- **真的照著各家協定講話的 adapter。** 內建的 provider [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 和 [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts) 直接照各家自己的協定講話。Ceiling：mini-dsh 不會做這種 adapter；它唯一碰到真 API 的程式碼，是 Live demo 在 `demo.py` 裡那段大約 20 行、把訊息翻成 Anthropic 格式的東西（Section 04 以後），而且它待在離線核心外面。
+- **折成一份，而不是拆成三份。** 真正的 dsh 通常會把一個能力拆成三邊：一個套件定義介面，一些套件提供它，一些套件使用它。llm seam 把定義端和使用端折進同一個套件，因為使用它的就是 agent loop 本身，不是一組隨時可以換掉的 tool。Section 10 會把這個 seam 和這條折疊規則一起重現一遍。
 
 ---
 
