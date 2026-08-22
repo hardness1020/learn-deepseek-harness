@@ -132,7 +132,7 @@ derive_messages() ──► "Summary: ..."   "and now?"   "Now this."
 
 - **compaction 是一個 plugin，還帶著自己的一套詞彙。** 核心的 session 套件裡一個 `compaction/*` 型別都沒有；是 plugin 用 declaration merging 加上去的，然後出現在 [`known-event-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/known-event-types.ts) 那 45 種事件型別裡。mini 這邊讓 `SURFACE_TYPES` 就維持三種，摘要直接重用 `user/message`，這樣整個 diff 就只剩那個 op。
 - **總得有人來寫這段摘要。** 這個 Section 把摘要文字當成呼叫端給的資料；不管是誰寫的，replace op 的行為都一樣。要靠 model 生出摘要，得先有一個會發請求的 loop，而 mini-dsh 要到 Section 04 才拿得到。
-- **另一種投影，不是這裡講的這種。** [`packages/session/session-projection`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-projection) 會把已經寫進去的事件，整理成給前端看的 UI 讀取模型，surface 的替換完全碰不到它。它跟 `deriveMessages()` 沒有關係，而 UI 本身在 Ceiling 之上：只指給你看，不重建。
+- **另一種投影，不是這裡講的這種。** [`packages/session/session-projection`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-projection) 會把已經寫進去的事件，整理成給前端看的 UI 讀取模型，surface 的替換完全碰不到它。它跟 `deriveMessages()` 沒有關係，而 UI 本身在 Ceiling 之上：只指給你看，沒有做。
 
 ---
 

@@ -1,4 +1,4 @@
-<!-- source: README.md @ 75b51d8 -->
+<!-- source: README.md @ 9275a92 -->
 
 <div align="center">
 
@@ -13,7 +13,7 @@
 
 </div>
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）是一套货真价实的 agent harness：一个建在 Cordis 上的大型 TypeScript 代码库，里面每一样东西都是 plugin。第一次读它的源代码会很吃力，因为它的设计想法散落在很多包里。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）是一套 agent harness：一个建在 Cordis 上的大型 TypeScript 代码库，里面每一样东西都是 plugin。第一次读它的源代码会很吃力，因为它的设计想法散落在很多包里。
 
 这份 tutorial 走另一条路。你只用 Python 标准库，跨 4 个 Phase、14 个 Section，重建一个最小版本，叫做 Mini-dsh。每个 Section 只加一个 Mechanism，用一个每次结果都一样的 Offline check 证明它会动，再带你去看真正的 dsh 是在哪里实现这件事的，所有指过去的链接都固定在上面那个 Studied version。
 
@@ -51,7 +51,7 @@ flowchart LR
 
 1. **Opening**：还没碰到任何代码之前，先讲清楚这个 Section 要回答的那一个设计问题。
 2. **Mechanism**：你要动手做出来的那些零件，配上代码片段和一张流程图。
-3. **In real dsh**：一张对照表，把你写的 Mini-dsh 符号对到真 dsh 的符号，每个链接都固定在 Studied version 上；后面再补上真系统有做、而重建版没做的那些部分，也就是 Ceiling。
+3. **In real dsh**：一张对照表，把你写的 Mini-dsh 符号对到真 dsh 的符号，每个链接都固定在 Studied version 上；后面再补上真系统有做、而 Mini-dsh 没做的那些部分，也就是 Ceiling。
 4. **Failure modes**：少了这个 Mechanism 会坏掉什么，而不是只讲有了它会动什么。
 
 Section 要照顺序读：每一个都把前一个的 `src/` 原封不动搬过来，然后只加一个 Mechanism，这就是 Carry-forward。读到哪个 Section，就顺手把它的 Offline check 跑一遍。想单独看清楚某一个 Mechanism，就 diff 相邻的两个 `src/` 目录：跑出来的 diff 刚好就是那个 Mechanism。
@@ -61,7 +61,7 @@ Section 要照顺序读：每一个都把前一个的 `src/` 原封不动搬过�
 | # | Section | 设计问题 | Mechanism |
 |---|---------|-----------------|-----------|
 | | **Foundation** | | |
-| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么每个 Section 的检查都得离线、对着 stand-in 跑？ | repo 骨架、runner、model stand-in 的 seam |
+| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么 mini-dsh 的核心只认自己那套 Message 格式，而且一定要隔着一个随时可以换掉的 Model seam 才去问 model？ | 不绑 provider 的 `Message`、会流式输出的 Model seam、Scripted stand-in |
 | 01 | [Kernel](sections/01-kernel/README.zh-CN.md) | 为什么卸载一个 plugin 这件事，能交给框架做对，而不是每个 plugin 自己收尾？ | 可反向撤销的 fiber/effect 注册 |
 | 02 | [Session log](sections/02-session-log/README.zh-CN.md) | 为什么要从一份 log 推导出 model 看到的历史，而不是直接存一份消息列表？ | 只能追加的 log + surface + deriveMessages |
 | 03 | [Compaction](sections/03-compaction/README.zh-CN.md) | 如果 log 只能追加，compaction 要怎么拿掉 model 看得到的东西？ | surface 的 `replace` 操作 |

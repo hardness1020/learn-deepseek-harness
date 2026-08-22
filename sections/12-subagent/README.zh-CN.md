@@ -142,7 +142,7 @@ meanwhile, the child, session sub-1: an ordinary transcript
 
 真正的 subagent 这一层，在这个 Section 的 Mechanism 之上，还多做了这些：
 
-- **可以接着用的 child。** `startContinuable()` 加上一个续接管理器，让 child 可以跨 turn 活着，parent 在两个 turn 之间也找得到它。照 [`run-settlement.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/run-settlement.ts)（第 2 到 4 行），只有一次性的后台模式会碰 jobs；可以接着用的 child 完全不经过 registry。这种 subagent 在这次重建的 Ceiling 之上：只在这里指给你看，不重建。
+- **可以接着用的 child。** `startContinuable()` 加上一个续接管理器，让 child 可以跨 turn 活着，parent 在两个 turn 之间也找得到它。照 [`run-settlement.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/run-settlement.ts)（第 2 到 4 行），只有一次性的后台模式会碰 jobs；可以接着用的 child 完全不经过 registry。这种 subagent 在 Mini-dsh 的 Ceiling 之上：只在这里指给你看，没有做。
 - **一整排 Provider。** `subagent-spawn-in-process`、`subagent-fork-in-process`、`subagent-acp`、`subagent-codex`、`subagent-claude-code`、`subagent-dsh-sdk`：选接口而不选继承这个主张，在这里变成看得到的东西。其中好几个背后根本连一个 `Agent` 都没有，这就是 registry 从来不开口要 Agent 的原因。
 - **启动成功的那一刻，拥有权转手。** 一次启动成功之后，child 的拥有权就转给 parent，所以 parent 一死，它委派出去的东西也跟着陪葬；mini 的 child 则是跟着整个 process 一起生、一起死。
 - **更忙的 runtime。** bus 事件（`subagent/provider-added`、`subagent/provider-removed`、`subagent/start`、`subagent/end`，在 runtime 的第 134 到 167 行）、descriptor 快照、找出所有后代的能力，加上三个包、五个 tool 名字组成的 Consumer 这一面：`subagent` 是这个 Section 做的那个，另外还有给还活着的 child 用的 `send_message`、`interrupt_agent`、`list_agents` 和 `report`。这些全都住在 runtime 和它的 Consumer 里，所以 Provider 可以一直薄得跟那个接口一样。

@@ -64,7 +64,7 @@ paints before reusing it.
 | --- | --- | --- |
 | pinned at a version | 釘在 | 固定在, 鎖定在 |
 | the system is built on it | 照這條規則蓋起來 | 建立在這條規則之上 |
-| a real harness | 一套真的 harness | 一套貨真價實的 harness |
+| a real harness | 一套真的 harness, 一套貨真價實的 harness | 一套 harness, 讓後面的描述說明它不是玩具 |
 | hit the API | 打 API | 呼叫 API, 调用 API |
 
 **2. A trailing English qualifier moves to the front.** English can hang a

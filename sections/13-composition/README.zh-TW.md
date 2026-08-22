@@ -137,7 +137,7 @@ send("run a command")                       the composed product
 
 真正的組合這一層，在這個 Section 的 Mechanism 之上，還多做了這些：
 
-- **一份活的 entry 清單。** Loader 自己就是一個 plugin，而那份清單一直是活的：改一個 entry，在跑著的 process 裡就會剛好掛上或卸下那一點差異，HMR 也是搭同一套機器。HMR 在這次重建的 Ceiling 之上：只在這裡指給你看，不重建。
+- **一份活的 entry 清單。** Loader 自己就是一個 plugin，而那份清單一直是活的：改一個 entry，在跑著的 process 裡就會剛好掛上或卸下那一點差異，HMR 也是搭同一套機器。HMR 在 Mini-dsh 的 Ceiling 之上：只在這裡指給你看，沒有做。
 - **profile 就是產品。** `dsh --profile web` 和 `dsh --profile headless`（[`apps/cli/src/args.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/apps/cli/src/args.ts)）會從 `PROFILE_TEMPLATES` 挑一疊 bundle：同一支執行檔，兩個產品，差別只在清單。
 - **每個 agent 各自的組合：preset。** 這不是 profile 那種層。[`@deepseek-ai/dsh-agent-presets`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/preset/agent-presets/src/mount.ts) 在每個 process 裡把一棵 `agent.cordis.yml` 的子樹掛一次，每個 session 再把自己的 agent 作用域接到它底下來加入；profile 的組合是整個 process 共用一份，preset 則是每個 agent 一份。
 - **YAML 寫的 entry，加上一套真的模組系統。** entry 就住在 `cordis.patch.yml` 這種使用者可以改、可以 diff 的檔案裡，名字則透過 `resolveBundleDir` 解到 npm 套件；mini 那個 `PLUGINS` 字典，就是同一件解析的事，只是把檔案系統拿掉了。
