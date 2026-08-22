@@ -4,7 +4,7 @@
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> 哪里要问 model，就在哪里直接调用 provider 的 SDK，这家 provider 的格式最后会跟着跑进 prompt、跑进 log、跑进 loop。核心只认一套自己的消息格式，只留一个随时可以换掉的调用，provider 就被挡在最外面那一层。
+> harness 里到处都要问 model。要是每个地方都各自调用某一家 provider 的 SDK，它的格式就会跟着跑进 prompt、跑进 log、跑进 loop。所以核心只认一套自己的消息格式，provider 收在一个随时可以换掉的调用后面。
 
 DeepSeek Harness（dsh）是一套货真价实的 agent harness：一个大型的 TypeScript 代码库，里面的 tool、prompt，甚至一整个子系统，都是 plugin，挂在一个正在跑的 kernel 上。这份 tutorial 只用 Python 标准库，把它重建成一个最小版本，一个 Section 只加一个 Mechanism。
 

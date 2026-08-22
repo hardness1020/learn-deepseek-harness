@@ -2,9 +2,10 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Reach for a provider's SDK wherever an answer is needed and that provider's
-> shape ends up in the prompt, the log, and the loop. Give the core one
-> message shape and one swappable call, and the provider stays at the edge.
+> Every part of the harness ends up asking the model something. Call a
+> provider's SDK at each of those places and its format follows into the
+> prompt, the log, and the loop. So the core keeps one message shape, and
+> one swappable call hides the provider.
 
 DeepSeek Harness (dsh) is a real agent harness: a large TypeScript codebase
 in which tools, prompts, and whole subsystems are plugins mounted onto a
