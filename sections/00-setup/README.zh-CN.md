@@ -57,7 +57,7 @@ class ScriptedModel:
         yield ("message", Message(role="assistant", content=text))
 ```
 
-`messages` 传进来了，却从来没被读过。不管你问什么，stand-in 都照着脚本、照着顺序回答。要是它会去比对请求内容，比对规则就会一条一条长出来，规则之间又互相牵扯，多到自己变成第二个 model，然后这个 model 又得再测一次（ADR 0001 否掉的正是这条路）。改用照顺序排的队列，整份脚本就摊在写它的检查里：第一条响应永远对应第一次调用。
+`messages` 传进来了，却从来没被读过。不管你问什么，stand-in 都照着脚本、照着顺序回答。要是它会去比对请求内容，比对规则就会一条一条长出来，规则之间又互相牵扯，多到自己变成第二个 model，然后这个 model 又得再测一次。改用照顺序排的队列，整份脚本就摊在写它的检查里：第一条响应永远对应第一次调用。
 
 每一条响应在送出最后那条消息之前，会先切成几块固定大小的 chunk 流式发出去：
 
@@ -110,7 +110,7 @@ Section 00 前面没有东西，所以这一格记的是后面每个 Section 都
 
 - **一个会做路由的 adapter registry。** `ctx.llm` 同时放着好几个 adapter，用 provider 名字当键；要挑出一次部署的默认 model，本身又是一个 plugin （[`packages/core/agent-default-model`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-default-model)， `ctx.agentDefaultModel`）。mini 这边一次只有一个 callable，要到 Section 10 才会给 seam 一个 service 的位置。
 - **流式输出上可以挂 middleware。** 一道 `llm/stream` waterfall（`index.ts` 第 51 到 60 行）让 plugin 可以包住或旁观每一次 model 调用，而重试会以 `llm/retry` 这种 session 事件出现在 log 里。
-- **真的会讲厂商协议的 adapter。** 内置的 provider [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 和 [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts) 会讲各家厂商自己的协议。Ceiling：mini-dsh 不会去重建任何一个讲厂商协议的 adapter；它唯一碰到真 API 的代码，是 Live demo 在 `demo.py` 里那段大约 20 行、把消息翻成 Anthropic 格式的东西（Section 04 以后），而且它待在离线核心外面（ADR 0001）。
+- **真的会讲厂商协议的 adapter。** 内置的 provider [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 和 [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts) 会讲各家厂商自己的协议。Ceiling：mini-dsh 不会去重建任何一个讲厂商协议的 adapter；它唯一碰到真 API 的代码，是 Live demo 在 `demo.py` 里那段大约 20 行、把消息翻成 Anthropic 格式的东西（Section 04 以后），而且它待在离线核心外面。
 - **折成一份，而不是拆成三份。** 真正的 dsh 通常会把一个能力拆成三边：一个包定义接口，一些包提供它，一些包使用它。llm seam 把定义端和使用端折进同一个包，因为使用它的就是 agent loop 本身，不是一组随时可以换掉的 tool。Section 10 会把这个 seam 和这条折叠规则一起重建一遍。
 
 ---
@@ -143,5 +143,4 @@ Model seam 在这里已经有了，但还没有哪个 Mechanism 在驱动它，�
 
 ## 出处
 
-- [`docs/adr/0001-scripted-offline-model-live-anthropic-demos.md`](../../docs/adr/0001-scripted-offline-model-live-anthropic-demos.md)：这个 repo 自己的 ADR，决定了要用脚本化的离线 stand-in、要把 Live demo 拆出来，也记下了一路上被否掉的那些选项。
 - [learn-agent-memory](https://github.com/hardness1020/learn-agent-memory)：这个 Section 的检查惯例（离线、不用 key、每次结果都一样）就是从这个 tutorial 系列沿用过来的。

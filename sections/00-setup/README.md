@@ -174,7 +174,7 @@ What the real llm seam adds on top of this section's Mechanism:
   [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts)
   speak vendor protocols. Ceiling: mini-dsh never rebuilds a wire adapter;
   its only real-API code is the Live demo's ~20-line Anthropic translation
-  in `demo.py` (sections 04 and later), outside the offline core (ADR 0001).
+  in `demo.py` (sections 04 and later), outside the offline core.
 - **A fold, not a triple.** Real dsh usually splits a capability three ways:
   a package defining the interface, packages providing it, packages
   consuming it. The llm seam folds definition and consumer into one package

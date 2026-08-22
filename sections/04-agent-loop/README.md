@@ -148,7 +148,7 @@ Compared with section 03:
   every step ends `"completed"`. The loop shape and the end reason are the
   socket section 05 plugs into.
 - This is the first model-touching Section, so `demo.py` appears: the same
-  loop, with the real Anthropic API plugged into the Model seam (ADR 0001).
+  loop, with the real Anthropic API plugged into the Model seam.
 
 ---
 
@@ -232,7 +232,7 @@ What the real agent loop adds on top of this section's Mechanism:
 - [`demo.py`](src/demo.py) (new): the first Live demo. The same loop with the
   real Anthropic API plugged into the Model seam, scripted turns with a
   compaction in the middle, and the log's own story printed at the end. The
-  SDK and the mini-Message translation live only here (ADR 0001).
+  SDK and the mini-Message translation live only here.
 
 ```bash
 python sections/04-agent-loop/src/test.py   # offline check, no key
