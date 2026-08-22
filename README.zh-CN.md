@@ -61,7 +61,7 @@ Section 要照顺序读：每一个都把前一个的 `src/` 原封不动搬过�
 | # | Section | 设计问题 | Mechanism |
 |---|---------|-----------------|-----------|
 | | **Foundation** | | |
-| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么 mini-dsh 的核心只讲自己的 Message 形状，而且要通过一个可以换掉的 Model seam 去问 model？ | 不绑 provider 的 `Message`、会做流式输出的 Model seam、Scripted stand-in |
+| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么 mini-dsh 的核心只认自己那套 Message 格式，而且一定要隔着一个随时可以换掉的 Model seam 才去问 model？ | 不绑 provider 的 `Message`、会流式输出的 Model seam、Scripted stand-in |
 | 01 | [Kernel](sections/01-kernel/README.zh-CN.md) | 为什么卸载一个 plugin 这件事，能交给框架做对，而不是每个 plugin 自己收尾？ | 可反向撤销的 fiber/effect 注册 |
 | 02 | [Session log](sections/02-session-log/README.zh-CN.md) | 为什么要从一份 log 推导出 model 看到的历史，而不是直接存一份消息列表？ | 只能追加的 log + surface + deriveMessages |
 | 03 | [Compaction](sections/03-compaction/README.zh-CN.md) | 如果 log 只能追加，compaction 要怎么拿掉 model 看得到的东西？ | surface 的 `replace` 操作 |
