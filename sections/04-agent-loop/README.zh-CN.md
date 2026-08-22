@@ -1,4 +1,4 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ 8c7e193 -->
 
 # 04 · Agent loop
 
