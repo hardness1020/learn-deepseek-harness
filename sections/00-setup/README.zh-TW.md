@@ -46,7 +46,7 @@ class Message:
     content: str
 ```
 
-凍結，是因為一則訊息記的是已經說出口的話，不是還能改的草稿。不綁 provider，是因為核心不該管回答的是誰家的 model；要把它翻成某一家的傳輸格式，那是 adapter 的事，而核心裡面一個 adapter 也沒有。
+這個 dataclass 是凍結的，因為一則訊息記的是已經說出口的話，不是還能改的草稿。它也不綁任何 provider，因為核心不該管回答的是誰家的 model；要把它翻成某一家的傳輸格式，那是 adapter 的事，而核心裡面一個 adapter 也沒有。
 
 三種 role 就把 harness 裡所有的來回都包完了：使用者說了什麼、model 說了什麼、tool 回了什麼。後面的 Section 會在這些訊息外面加事件型別，而不是往訊息裡面加欄位。
 
