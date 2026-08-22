@@ -1,4 +1,4 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ 8c7e193 -->
 
 # 04 · Agent loop
 
@@ -110,7 +110,7 @@ send("and now?")
 - `kernel.py`、`message.py`、`session_log.py`、`standin.py` 都原封不动搬过来；`agent_loop.py` 是唯一新增的源文件，所以跟 03 的 diff 就是这个 section 的 Mechanism，没有别的。
 - 03 的检查里那个要手动一步步推的 `stream_turn()` 辅助函数不见了。现在 loop 是真的被测到的代码，检查是通过 `send()` 来推动它。
 - 今天这个 while-step 循环每个 turn 只会跑一次，因为现在还没有 tool，每个 step 都以 `"completed"` 结束。这个循环的形状和结束理由，就是 Section 05 要接进来的地方。
-- 这是第一个会碰到 model 的 Section，所以 `demo.py` 出现了：同一个 loop，只是把真正的 Anthropic API 接到 Model seam 上（ADR 0001）。
+- 这是第一个会碰到 model 的 Section，所以 `demo.py` 出现了：同一个 loop，只是把真正的 Anthropic API 接到 Model seam 上。
 
 ---
 
@@ -152,7 +152,7 @@ send("and now?")
 
 - [`agent_loop.py`](src/agent_loop.py)（新增）：带着 `send()` 和 `_step()` 的 `Agent`、`AgentRegistry`，还有提供 `agents` service 的 plugin。
 - [`test.py`](src/test.py)：整个 turn 的故事会照顺序落在 log 上；`request/header` 上的数字证明每一步都重新推导，跨过一次 compaction 也一样（1、3、2）；把 log 重放一遍再配一个新的 Agent，接下去写的东西一模一样；step 中途崩掉，下一次推导还是干净的；turn 中途再调用一次 `send()` 会被拒绝。
-- [`demo.py`](src/demo.py)（新增）：第一个 Live demo。同一个 loop，把真正的 Anthropic API 接到 Model seam 上，跑几个写好的 turn，中间插一次 compaction，最后把 log 自己的故事打印出来。SDK 和 mini-Message 之间的转换只住在这里（ADR 0001）。
+- [`demo.py`](src/demo.py)（新增）：第一个 Live demo。同一个 loop，把真正的 Anthropic API 接到 Model seam 上，跑几个写好的 turn，中间插一次 compaction，最后把 log 自己的故事打印出来。SDK 和 mini-Message 之间的转换只住在这里。
 
 ```bash
 python sections/04-agent-loop/src/test.py   # offline check, no key
