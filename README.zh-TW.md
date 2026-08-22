@@ -13,7 +13,7 @@
 
 </div>
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）是一套貨真價實的 agent harness：一個建在 Cordis 上的大型 TypeScript 程式碼庫，裡面每一樣東西都是 plugin。第一次讀它的原始碼會很吃力，因為它的設計想法散落在很多套件裡。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）是一套 agent harness：一個建在 Cordis 上的大型 TypeScript 程式碼庫，裡面每一樣東西都是 plugin。第一次讀它的原始碼會很吃力，因為它的設計想法散落在很多套件裡。
 
 這份 tutorial 走另一條路。你只用 Python 標準函式庫，跨 4 個 Phase、14 個 Section，重建一個最小版本，叫做 Mini-dsh。每個 Section 只加一個 Mechanism，用一支每次結果都一樣的 Offline check 證明它會動，再帶你去看真正的 dsh 是在哪裡實作這件事的，所有指過去的連結都固定在上面那個 Studied version。
 
