@@ -1,25 +1,31 @@
-<!-- source: README.md @ 55e829b -->
+<!-- source: README.md @ 8c7e193 -->
 
 # 00 · Setup
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | 简体中文
 
-> 每个 Section 收尾，都要检查程序内容，用结果说话。可是真的 model，同一道题问两次就给你两个答案，所以这里先让脚本顶上。
+> 哪里需要答案，就直接用一家 provider 的 SDK，那家厂商的形状最后会跑进 prompt、跑进 log、跑进 loop。核心只认一种消息形状、只留一个可以换掉的调用，provider 就会待在边界上。
 
-这份 tutorial 要重建一套 harness，而它里面每一个 Mechanism 都绕着一次 model 调用转：历史是为 model 推导出来的，tool 是 model 叫起来的，prompt 是为 model 组出来的。14 个 Section，每一个的结尾都有跑得起来的检查，必须证明自己那个 Mechanism 真的会动。
+DeepSeek Harness（dsh）是一套货真价实的 agent harness：一个大型的 TypeScript 代码库，里面的 tool、prompt，甚至一整个子系统，都是 plugin，挂在一个正在跑的 kernel 上。这份 tutorial 只用 Python 标准库，把它重建成一个最小的版本，一个 Section 只加一个 Mechanism。
 
-最直觉的做法，是把一个真的 API 摆在这些检查后面：问一次真的 model，再对它的回答做断言。
+这些 Mechanism 全都绕着同一件事转：跟 model 要一个回答。历史是为 model 推导出来的，tool 是 model 叫起来的，prompt 是为 model 组出来的。
 
-但真的 model 要 key、要网络、要花钱，而且同样的输入喂进去，吐回来的东西每次都不一样。断言挂掉的时候，你分不出是代码坏了，还是 model 今天心情不同；会因为两种原因失败的检查，就算过了也证明不了什么。更麻烦的是，这种不稳定出现在最不该出现的地方：这里要研究的是 model 外面那套 harness，从来不是 model 本身。
+所以重建这件事需要一个“怎么问”的办法，而最直觉的办法，就是 import 一家 provider 的 SDK，哪里需要答案就在哪里调用它。
 
-所以：为什么每个 Section 的检查都得离线、对着 stand-in 跑？
+这么一来，那家 provider 会渗进整套 harness。它的请求格式会跑到组 prompt 的地方，它的响应对象会跑进 log，它的 role 名称会跑进 compaction；想换一家 provider，每个沾到的地方都得动手改。
 
-因为检查存在的理由，就是证明这个 Section 的 Mechanism；而 model 刚好是唯一一个会动、行为却不归这个 Mechanism 管的零件。把 model 锁住，每次检查都会得到固定结果：不用 key、不用网络，跑几次输出都一模一样。要做到这件事，Section 00 得先：
+而且答案不是一次到齐的。model 是一边写一边把字吐出来，所以调用端要是非等到一整串完整的文本不可，等的这段时间就什么都端不出来，log 也要等到最后才有东西可以记。
+
+所以：为什么 mini-dsh 的核心只讲自己的 Message 形状，而且要通过一个可以换掉的 Model seam 去问 model？
+
+因为这套 harness 真正要讲的，是 model 调用外面那一整圈事情，而那些事情都不该管回答的是谁家的 model。送进去是同一种形状，拿回来也是同一种形状，provider 就变成一个插上去就能用的零件。要做到这件事，Section 00 得先：
 
 1. 给 mini-dsh 一套自己的 **Message 形状**，跟真正的 dsh 一样不绑任何 provider，这样就不会有哪家厂商的传输格式渗进核心。
 2. 把 **Model seam** 定下来：一个普通的 callable，收下消息列表，先流式吐出 chunk 事件，最后刚好收在一条消息上。
-3. 附上一个 **Scripted stand-in**，照这份约定讲话：一条照顺序排好的队列，里面是写死的响应，从来不去看送进来的请求。
-4. 每一条响应都用同一套规则切成 chunk，这样流式输出从第一天就是真的，而且每次跑出来一模一样。
+3. 附上一个 **Scripted stand-in**，照这份约定讲话，让这个 seam 一出现就有一个真的跑得动的实现。
+4. 每一条响应都用同一套规则切成 chunk，这样流式输出从第一天就是真的。
+
+这份 tutorial 怎么检查自己，是从这个 seam 长出来的。stand-in 照着一条排好顺序的队列回答，里面全是写死的响应，而且它从来不去看送进来的请求，所以每个 Section 的检查都能离线跑、不用 key，每次跑出来的东西都一模一样。
 
 ---
 
@@ -29,7 +35,7 @@
 
 - **`Message`**（`message.py`）：跟 model 来回交换的东西都长这个形状，一个冻结的 dataclass，只有 `role` 和 `content`。
 - **Model seam**：它不是一个类，是一套调用惯例。`model(messages)` 先 yield 出 `("chunk", str)` 事件，最后 yield 一个 `("message", Message)`。
-- **`ScriptedModel`**（`standin.py`）：seam 的离线实现，一条队列，里面装着写死的响应。
+- **`ScriptedModel`**（`standin.py`）：seam 的第一个实现，一条队列，里面装着写死的响应。
 
 Message 的形状就是这套系统的全部词汇：
 
@@ -42,7 +48,9 @@ class Message:
 
 之所以冻结，是因为一条消息记录的是已经说出口的话，不是还能改的草稿。之所以不绑 provider，是因为核心不该在意回答的是谁家的 model；把这个形状翻成某家厂商的传输格式，那是 adapter 的事，而核心里面一个 adapter 也没有。
 
-stand-in 是 seam 的第一个实现，而且刻意做得很被动：
+三种 role 就涵盖了这套 harness 会有的所有来回：用户说了什么、model 说了什么、tool 回了什么。后面的 Section 会在这些消息外面加事件类型，而不是往消息里面加字段。
+
+seam 本身就是一套调用惯例。任何一个 callable，只要收下一份消息列表、再 yield 出这两种事件，它就算是一个 model；所以 adapter 可以是一个函数，可以是一个闭包，也可以像 stand-in 那样是一个对象：
 
 ```python
 class ScriptedModel:
@@ -57,7 +65,7 @@ class ScriptedModel:
         yield ("message", Message(role="assistant", content=text))
 ```
 
-`messages` 传进来了，却从来没被读过。不管你问什么，stand-in 都照着脚本、照着顺序回答。要是它会去比对请求内容，比对规则就会一条一条长出来，规则之间又互相牵扯，多到自己变成第二个 model，然后这个 model 又得再测一次。改用照顺序排的队列，整份脚本就摊在写它的检查里：第一条响应永远对应第一次调用。
+`messages` 传进来了，却从来没被读过。不管你问什么，stand-in 都照着脚本、照着顺序回答，而整份脚本就摊在写它的那个检查里：第一条响应永远对应第一次调用。
 
 每一条响应在送出最后那条消息之前，会先切成几块固定大小的 chunk 流式发出去：
 
@@ -82,7 +90,7 @@ check                                  ScriptedModel(["Hello, reader."])
   │◄──────────────────────────────────
 ```
 
-这两个阶段比 stand-in 本身重要得多。chunk 是当场流过去的那一段；最后那条 `Message` 才是留得住的记录，而且它每次都会把完整的文本再讲一遍。到了 Section 02，log 会把这两种东西存成不同的事件类型；到了 Section 04，loop 会把两种都往下传，中间不做任何缓冲。因为 stand-in 从第一天就在做流式输出，后面没有任何一个 Section 需要拿真的 API 来第一次面对流式输出。
+这两个阶段比 stand-in 本身重要得多。chunk 是当场流过去的那一段；最后那条 `Message` 才是留得住的记录，而且它每次都会把完整的文本再讲一遍。到了 Section 02，log 会把这两种东西存成不同的事件类型；到了 Section 04，loop 会把两种都往下传，中间不做任何缓冲。
 
 ### 改了什么
 
@@ -117,11 +125,11 @@ Section 00 前面没有东西，所以这一格记的是后面每个 Section 都
 
 ## Failure modes
 
-- **拿真的 model 来跑，每次检查都像在赌运气。** 同样的输入，吐回来的东西每次都不一样，于是断言不是写得很模糊（`"contains a word"`），就是时好时坏。stand-in 每次跑出来的输出一模一样，所以检查可以直接断言确切的内容，而且说到做到。
-- **会去读请求的 stand-in，迟早变成第二个 model。** 比对规则会越积越多，规则之间又互相牵扯，很快这个替身就聪明到足以出错。队列的约定是故意做笨的：第一条响应对第一次调用，而且整份脚本就明明白白摊在检查里。
-- **一口气把整段吐完的 stand-in，等于把流式输出往后拖。** 如果只 yield 最后那条消息，处理 chunk 的代码要到 Section 04 才第一次跑起来，而且是对着真的 API 跑，出事还重现不了。每次切法都一样的 chunk，让流式输出从第一次检查开始就是真的。
-- **对着 stand-in 的内部下断言，检查到的只是测试用的架子。** 伸手去摸 `_queue`，会让检查绑死在一个真 adapter 根本没有的东西上。这条规则贯穿全部 14 个 Section：只对穿过 seam 的东西下断言，等 log 出现以后就对着 log 下，永远不要对着 stand-in 下。
-- **脚本用完了，就要明明白白地失败。** 多调用一次 model，就会从空队列里 pop，然后直接抛错，所以问过头的检查会失败，而不是默默重用一个刚好会过的答案。
+- **某一家厂商的响应形状会四处蔓延。** provider 回什么就存什么，于是 log 里放的是它那份 JSON，compaction 学到的是它的 role 名称，组 prompt 的代码则是照着它的请求格式写的。等到要换一家 provider，这三个地方都得改。只有一种 Message 形状，翻译这件事就被关在一个 adapter 里面。
+- **消息可以改，历史就能被就地改写。** Section 02 和 03 把记下来的消息当成已经发生的事实，而 compaction 想缩掉 model 看到的东西，也只能走 log 这条路。要是一条消息的字段可以随手重新指派，这两件事就都不成立了：记录和 model 看到的画面会越飘越开，而且改过的痕迹一点都不留。
+- **seam 只回一整串写完的文本，流式输出就被丢掉了。** model 在写的时候，调用端没有东西可以端出来，Section 02 也没有 chunk 事件可以记，而一段长一点的回答看起来就像卡住了。有了 chunk，只要第一批字节出来，harness 手上就有东西可以往下传。
+- **只有 chunk、没有收尾的那条消息，重组的工作就落到每一个调用端头上。** loop、log，还有每一段在旁边看着的代码，都得自己接出一份自己的副本，而每一份都可能在接缝的地方悄悄接错。最后那一个 `("message", Message)` 让这份留得住的记录只在 seam 这里组一次。
+- **把 seam 定义成一个基类，等于把整套 harness 拖进每一个 adapter 里。** 要继承，就代表 provider 得一并吃下 harness 那个类已经先假设好的东西；而一个普通的函数，或是一个包住另一个 model 的闭包，就再也不算数了。改成一套调用惯例，要求就只停在“会 yield 出这两种事件”，换一个 model 也就是传一个不一样的 callable 进去而已。
 
 ---
 

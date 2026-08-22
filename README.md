@@ -59,7 +59,7 @@ Read the Sections in order: each one carries the previous `src/` forward verbati
 | # | Section | Design question | Mechanism |
 |---|---------|-----------------|-----------|
 | | **Foundation** | | |
-| 00 | [Setup](sections/00-setup/) | why must every section's check run offline against a stand-in? | repo skeleton, runner, model stand-in seam |
+| 00 | [Setup](sections/00-setup/) | why does mini-dsh's core speak its own Message shape through a swappable Model seam? | provider-agnostic `Message`, streaming Model seam, Scripted stand-in |
 | 01 | [Kernel](sections/01-kernel/) | why can the framework unload a plugin correctly, rather than per-plugin cleanup? | fiber/effect reversible registrations |
 | 02 | [Session log](sections/02-session-log/) | why derive model history from a log instead of storing a message list? | append-only log + surface + deriveMessages |
 | 03 | [Compaction](sections/03-compaction/) | if the log is append-only, how does compaction remove anything the model sees? | surface `replace` op |
