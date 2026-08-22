@@ -51,7 +51,7 @@ flowchart LR
 
 1. **Opening**：还没碰到任何代码之前，先讲清楚这个 Section 要回答的那一个设计问题。
 2. **Mechanism**：你要动手做出来的那些零件，配上代码片段和一张流程图。
-3. **In real dsh**：一张对照表，把你写的 Mini-dsh 符号对到真 dsh 的符号，每个链接都固定在 Studied version 上；后面再补上真系统有做、而重建版没做的那些部分，也就是 Ceiling。
+3. **In real dsh**：一张对照表，把你写的 Mini-dsh 符号对到真 dsh 的符号，每个链接都固定在 Studied version 上；后面再补上真系统有做、而 Mini-dsh 没做的那些部分，也就是 Ceiling。
 4. **Failure modes**：少了这个 Mechanism 会坏掉什么，而不是只讲有了它会动什么。
 
 Section 要照顺序读：每一个都把前一个的 `src/` 原封不动搬过来，然后只加一个 Mechanism，这就是 Carry-forward。读到哪个 Section，就顺手把它的 Offline check 跑一遍。想单独看清楚某一个 Mechanism，就 diff 相邻的两个 `src/` 目录：跑出来的 diff 刚好就是那个 Mechanism。

@@ -149,7 +149,7 @@ the work finishes; the agent is idle; the watcher settles "completed"
 
 真正的 jobs 这一层，在这个 Section 的 Mechanism 之上，还多做了这些：
 
-- **第二个生产者，地位平起平坐。** `JobKindMap` 里写着 `bash` 和 `subagent`：subagent 那个一次性的后台模式，会把 child 交给 bash tool 用的同一个 registry，这就是控制用的 tool 只需要写一次的原因。那个生产者就是 Section 12 的 Mechanism；可以接着用的 subagent 完全不碰 jobs，位置在这次重建的 Ceiling 之上。
+- **第二个生产者，地位平起平坐。** `JobKindMap` 里写着 `bash` 和 `subagent`：subagent 那个一次性的后台模式，会把 child 交给 bash tool 用的同一个 registry，这就是控制用的 tool 只需要写一次的原因。那个生产者就是 Section 12 的 Mechanism；可以接着用的 subagent 完全不碰 jobs，位置在 Mini-dsh 的 Ceiling 之上。
 - **真的杀得死的 kill。** 真正的 bash 生产者，它的 `cancel` 会对一整个 process group 送信号；mini 的 cancel 只是一个标志，工作愿意的话才会去看。seam 的形状，还有谁先定案这件事，两边一模一样，只是 `cancel` 背后的机器大很多。
 - **走 callback 送，不发 bus 事件。** 跟前面每一层都不一样，jobs 没有声明任何 Cordis 事件：变动和完成都走 `onJobDone` / `onJobsChanged` 这两个 callback，而拥有者看到的那段通知文本是在 `tool-jobs` 里组出来的，不是在 registry 里。
 - **更丰富的快照。** `JobSnapshot` 除了 mini 那四个字段以外，还带了时间、输出的游标，以及每一种 job 各自的细节；另外有一个 `wait` 入口可以让调用者卡在那里等定案。这两样跟其他入口一样，都只认拥有者。
