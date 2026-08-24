@@ -11,6 +11,8 @@
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
+<video src="https://github.com/user-attachments/assets/044d258b-7e3a-4448-b0b0-224bd6c504fa" controls width="800"></video>
+
 </div>
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）是一套 agent harness：一個建在 Cordis 上的大型 TypeScript 程式碼庫，裡面每一樣東西都是 plugin。第一次讀它的原始碼會很吃力，因為它的設計想法散落在很多套件裡。
@@ -21,25 +23,9 @@
 
 ## 全貌
 
-```mermaid
-flowchart LR
-  subgraph F[Foundation]
-    direction TB
-    s00[00 setup] --> s01[01 kernel] --> s02[02 session-log] --> s03[03 compaction]
-  end
-  subgraph L[The Loop]
-    direction TB
-    s04[04 agent-loop] --> s05[05 tools] --> s06[06 scheduler] --> s07[07 inbox] --> s08[08 system-prompt] --> s09[09 skills]
-  end
-  subgraph C[Capabilities]
-    direction TB
-    s10[10 capability-seams] --> s11[11 jobs] --> s12[12 subagent]
-  end
-  subgraph X[Composition]
-    s13[13 composition]
-  end
-  F --> L --> C --> X
-```
+你會做出來的東西，一頁看完：把它掛起來的 kernel、把它跑起來的 loop，還有它要碰 log 以外的世界時，伸出去的那幾道 seam。
+
+![Mini-dsh 架構](assets/architecture.png)
 
 有一條規則貫穿每個 Section，因為真正的系統就是建立在這條規則之上：
 
@@ -87,6 +73,7 @@ learn-deepseek-harness/
 ├── LICENSE
 ├── requirements.txt     # live demos only: anthropic, python-dotenv
 ├── .env.example         # ANTHROPIC_API_KEY / ANTHROPIC_MODEL / optional base URL
+├── assets/              # the architecture diagram, and the script that draws it
 └── sections/
     ├── 00-setup/
     │   ├── README.md

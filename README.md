@@ -9,6 +9,8 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
+<video src="https://github.com/user-attachments/assets/044d258b-7e3a-4448-b0b0-224bd6c504fa" controls width="800"></video>
+
 </div>
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) is a real agent harness: a large TypeScript codebase built on Cordis, where everything is a plugin. Reading it cold is hard because its design ideas are spread across many packages.
@@ -19,25 +21,9 @@ This tutorial takes the other route. You rebuild a minimal version, Mini-dsh, in
 
 ## Big picture
 
-```mermaid
-flowchart LR
-  subgraph F[Foundation]
-    direction TB
-    s00[00 setup] --> s01[01 kernel] --> s02[02 session-log] --> s03[03 compaction]
-  end
-  subgraph L[The Loop]
-    direction TB
-    s04[04 agent-loop] --> s05[05 tools] --> s06[06 scheduler] --> s07[07 inbox] --> s08[08 system-prompt] --> s09[09 skills]
-  end
-  subgraph C[Capabilities]
-    direction TB
-    s10[10 capability-seams] --> s11[11 jobs] --> s12[12 subagent]
-  end
-  subgraph X[Composition]
-    s13[13 composition]
-  end
-  F --> L --> C --> X
-```
+Everything you build, on one page: the kernel that mounts it, the loop that runs it, and the seams it reaches through to touch anything outside the log.
+
+![Mini-dsh architecture](assets/architecture.png)
 
 One rule carries through every Section, because it is the rule the real system is built on:
 
@@ -85,6 +71,7 @@ learn-deepseek-harness/
 ├── LICENSE
 ├── requirements.txt     # live demos only: anthropic, python-dotenv
 ├── .env.example         # ANTHROPIC_API_KEY / ANTHROPIC_MODEL / optional base URL
+├── assets/              # the architecture diagram, and the script that draws it
 └── sections/
     ├── 00-setup/
     │   ├── README.md

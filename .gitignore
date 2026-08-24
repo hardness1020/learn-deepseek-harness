@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets (keep .env.example tracked)
+.env
+
+# Claude Code local settings
+.claude
+CLAUDE.md
+
+# Mattpocock local settings
+docs
+CONTEXT.md
