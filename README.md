@@ -15,7 +15,7 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) is a real agent harness: a large TypeScript codebase built on Cordis, where everything is a plugin. Reading it cold is hard because its design ideas are spread across many packages.
 
-This tutorial takes the other route. You rebuild a minimal version, Mini-dsh, in plain stdlib Python across 14 Sections in 4 Phases. Each Section adds exactly one Mechanism, proves it with a deterministic Offline check, and points back to where the real dsh implements it, pinned at the Studied version above.
+This tutorial takes the other route. You rebuild a minimal version, Mini-dsh, in plain stdlib Python across 14 Sections in 4 Phases. Each Section adds exactly one Mechanism, verifies it with an Offline check, and points back to where the real dsh implements it.
 
 **Contents**: [Big picture](#big-picture) · [How to learn](#how-to-learn) · [Sections](#sections) · [Repository structure](#repository-structure) · [Running](#running) · [Contributing](#contributing) · [References](#references)
 
