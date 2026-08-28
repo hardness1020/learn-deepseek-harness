@@ -1,37 +1,37 @@
-<!-- source: README.md @ d5b8152 -->
+<!-- source: README.md @ 3705bd7 -->
 
 # 09 · Skills
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> 說明文字太大，不能每個 step 都送；又太有用，不能乾脆不放。所以 request 只帶名字，全文等真的有東西要用時再取。
+> skill 內容往往很長，不適合每個 step 都重複傳送；但如果完全不提供，模型也不知道它們存在。因此，請求只帶上 skill 名稱與摘要，完整內容等到真正需要時再載入。
 
-Section 08 的 request 帶著穩定的 system 文字和一份會變的快照，但它帶的每一個字，每個 step 都還是要送一次。指示文字塞不進這個預算：一套 harness 會慢慢累積各種專門工作的操作說明，而任何一個 turn 用得到的，幾乎都只有其中一小塊。
+第 08 章的請求已經包含穩定的 system prompt 和可變的 runtime context，但其中每個字仍會在每個 step 重複傳送。隨著 harness 累積越來越多專用操作指南，將所有內容都放進請求會快速消耗 context 預算，而一個 turn 通常只會用到其中少數幾項。
 
-兩個最直覺的放法都不對。全部寫死進 system 文字，每一次 request 就得為所有指示付錢，用不用得到都一樣。整包都不放，model 連聽都沒聽過的東西，當然也用不上。
+全部寫入 system prompt，會讓每次請求都支付所有 skill 的 token 成本，不論是否使用。如果什麼都不提供，模型又無法主動選用它不知道的 skill。
 
-而且這組 skill 不是固定的。skill 文字會同時從好幾個地方來：內建的一批、工作區、plugin。session 還在跑的時候，這些來源各自掛上、卸下，或蓋掉某個名字，而且誰都不能為了這件事去改別的來源提供的文字。
+此外，skill 並非固定不變。內建功能、工作區和 plugin 都可以提供 skill，並在 session 執行期間動態掛載、卸載或覆寫同名項目，各來源之間不應直接修改彼此的內容。
 
-所以：為什麼 skill 清單是當成 context 注入，內容卻要靠一次 tool 呼叫才載進來？
+因此，本章要回答的問題是：為什麼 skill 清單以 context 形式注入，完整內容卻要透過工具呼叫才載入？
 
-因為「有哪些東西」必須便宜、而且隨時看得到，「東西說了什麼」則是用到才付錢。要做到這件事，registry 必須：
+模型需要以低成本隨時知道「有哪些 skill」，但只在使用時才載入「skill 的完整內容」。registry 因此需要：
 
-1. 收的是 provider，不是 skill：每個 provider 用兩個動作把名字換成指示文字， `list()` 給摘要，`get(name)` 給一份完整內容。
-2. provider 要分層：後註冊的會蓋掉先註冊的同名項目，而且每一次註冊都會回傳它的撤銷函式。
-3. 清單當成 context 注入：名字和一行說明搭 runtime-context 快照的便車，只有清單變了才重發。
-4. 內容用一個 `skill` tool 按需載入，所以那段文字是以一筆普通的 `tool/result` 落地。
-5. 碰到不認得的名字，就回一則正常的錯誤結果，絕不往外丟例外。
+1. registry 儲存的是 provider，而不是 skill 本身。每個 provider 透過 `list()` 提供摘要，透過 `get(name)` 提供完整內容。
+2. provider 採分層設計：後註冊的同名項目會覆寫先前版本，每次註冊都會回傳撤銷函式。
+3. 清單會隨 runtime-context 快照一起注入，內容包含名稱與一行說明，只有清單變更時才重發。
+4. 完整內容透過 `skill` 工具按需載入，並以一般 `tool/result` 寫入歷史。
+5. 名稱不存在時，回傳一般錯誤結果，不讓例外穿過工具邊界。
 6. 清單是空的時候，什麼都不送。
 
 ---
 
-## Mechanism
+## 核心機制
 
-一個新檔案 `skills.py`，搬過來的檔案一個都沒動：
+本章只新增 `skills.py`，其他檔案維持不變：
 
 - **`SkillRegistry`**：一層一層的 provider，照註冊順序疊。`catalog()` 把每個 provider 的 `list()` 摘要合起來，看得到的名字每個一行，同名的話後面那層的那行贏。`get(name)` 反過來從最上層往回走，回傳找到的第一份內容。`register()` 照 kernel 的做法回傳撤銷函式。
 - **`MemorySkillProvider`**：最簡單的 provider，就是一個 `name -> {"description", "body"}` 的 dict。任何物件只要有 `list()` 和 `get(name)` 就算 provider；`list()` 絕不會主動把內容端出來。
-- **`skills_plugin`**：把這個分工接起來。一個 Section 08 的 context provider 把 `catalog_text()` 算進快照，一個 `skill` tool 負責載入內容，registry 本身則以 `skills` 這個名字提供出去。
+- **`skills_plugin`**：把這個分工接起來。一個第 08 章的 context provider 把 `catalog_text()` 算進快照，一個 `skill` tool 負責載入內容，registry 本身則以 `skills` 這個名字提供出去。
 
 ```python
 def catalog(self):
@@ -51,7 +51,7 @@ def get(self, name):
     return None
 ```
 
-這份清單不需要任何新的投遞機制。它只是 Section 08 那個 registry 上多出來的一個 context provider，所以它什麼時候會再進 log 一次，早就由快照去重決定好了： provider 一變就重發，清單安安靜靜的時候一毛錢都不花。
+清單不需要新的投遞機制，只要作為第 08 章 registry 中的一個 context provider。快照去重會決定何時再次寫入 log：provider 改變時重發，清單不變時不增加額外 token。
 
 ```python
 ctx.effect(
@@ -62,10 +62,10 @@ ctx.effect(
 )
 ```
 
-內容走的是另一條路：Section 05 蓋好的那條 tool pipeline。名字不認得的時候，tool 的實作裡會丟出例外，pipeline 再把它變成一則正常的 `is_error` 結果，所以對話紀錄的形狀不會被弄壞：
+內容走的是另一條路：第 05 章蓋好的那條 tool pipeline。名字不認得的時候，tool 的實作裡會丟出例外，pipeline 再把它變成一則正常的 `is_error` 結果，所以對話紀錄的形狀不會被弄壞：
 
 ```text
-registered, layered              every step (the section 08 plane)
+registered, layered              every step (the Section 08 plane)
 
 built-in   greet, haiku ─┐ catalog() ─► skills, load with the      ─► same as the last
 workspace  greet         ┘             skill tool before use:         snapshot row?
@@ -79,7 +79,7 @@ tool/call    skill {"name": "haiku"}
 tool/result  the full instruction text, an ordinary row
 ```
 
-下面是一次真的執行，照 log 記下來的樣子。清單上有兩個 skill 的名字；model 載了其中一份內容、照著做，第二個 step 則發現清單沒變：
+以下是實際執行時的 log。清單中有兩個 skill；模型按需載入其中一份內容並照著執行，第二個 step 則確認清單沒有變化：
 
 ```text
 send("hi")
@@ -101,64 +101,64 @@ send("hi")
   │  15  turn/end
 ```
 
-seq 7 那份內容，現在是推導歷史的一部分，一則普通的 `tool` 訊息：這個 session 後面每一次 request 都要為它付錢，但那是因為 model 自己開口要的。`greet` 的內容從頭到尾沒人要過，所以一個 token 都沒花。
+seq 7 的內容現在成為推導歷史的一部分，也就是一則普通的 `tool` 訊息。後續 request 會持續攜帶它，但這是模型主動要求載入的結果。`greet` 從未被要求，因此完整內容不會產生任何 token 成本。
 
 ### 改了什麼
 
-跟 Section 08 比起來：
+與第 08 章相比：
 
-- 搬過來的檔案全都原封不動：`agent_loop.py`、`inbox.py`、`kernel.py`、 `message.py`、`scheduler.py`、`session_log.py`、`standin.py`、 `system_prompt.py`、`tools.py`。`skills.py` 是唯一的新原始碼檔案，所以跟 08 的 diff 剛好就是這個 Section 的 Mechanism，沒有別的。
-- loop 完全沒改，因為這個 Mechanism 純粹是 plugin：清單從 Section 08 的 context provider 進來，內容從 Section 05 的 tool 進來。這是第一個 Section，它的 Mechanism 不用動到任何搬過來的檔案，就放得進去。
+- 所有既有檔案都完整沿用：`agent_loop.py`、`inbox.py`、`kernel.py`、 `message.py`、`scheduler.py`、`session_log.py`、`standin.py`、 `system_prompt.py`、`tools.py`。`skills.py` 是唯一的新原始碼檔案，因此與第 08 章相比，diff 只包含本章新增的機制，不包含其他改動。
+- loop 完全沒改，因為這項機制純粹是 plugin：清單從第 08 章的 context provider 進來，內容從第 05 章的 tool 進來。這是第一個完全透過 plugin 組合完成的章節，不需要修改任何既有檔案。
 - log 沒有多出新的事件型別。快照那一筆現在可能夾著清單那一段，`tool/result` 那一筆可能夾著一份 skill 內容；推導歷史的時候，兩者就是普通的紀錄，照普通的方式處理。
-- `demo.py`：Live demo 給真的 model 一份清單，讓它自己開口載一份內容，再趁兩個 turn 之間註冊第二個 provider，所以重發這件事會發生在一次真的 model 呼叫上。
+- `demo.py`：實機示範給實際模型一份清單，讓它自己開口載一份內容，再趁兩個 turn 之間註冊第二個 provider，所以重發這件事會發生在一次實際模型呼叫上。
 
 ---
 
-## In real dsh
+## 對照真正的 dsh
 
-所有指過去的連結都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。registry 住在 skill 這個套件家族裡： [`packages/skill`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill)。
+以下連結皆指向研究版本 [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。registry 位於 skill 這個套件家族裡： [`packages/skill`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill)。
 
 | Mini-dsh | 真正的 dsh | 說明 |
 | --- | --- | --- |
 | `skills.py` 裡的 `SkillRegistry` | [`packages/skill/skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts)：`SkillRegistry` | 真正的 registry 繼承 `Service`，掛在 `ctx.skills` 底下，跟 mini 一樣是個複數形的 seam。它的層知道 scope（`SkillLayer implements ScopeLayer`）；mini 就只照註冊順序疊。 |
 | provider 的 duck type（`list()` / `get(name)`） | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts)：`SkillProvider` | 一個把名字換成指示文字的介面（第 248 行），不是 Service。註冊時收的是一個工廠函式，它會拿到一個 `SkillProviderControl`（第 391 行），也就是 mini 那個撤銷函式在真實世界裡的樣子。 |
-| `MemorySkillProvider` | [`packages/skill/skill-filesystem/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill-filesystem/src/index.ts)：`FileSystemSkillProvider` | 出貨的那個 provider 是去磁碟上解 skill 目錄的（第 146 行）；mini 用 dict 撐起來的 provider，讓 Offline check 完全不碰檔案系統。 |
-| 清單的 context provider | [`packages/skill/tool-skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/tool-skill/src/index.ts) | 真正的使用端是從 `agent/pre-step` 的 listener 把清單發出去的（第 177、213 行），也就是 Section 08 指過的那條 pre-step 通道。mini 沒有 pre-step hook，所以它的清單改搭快照那條 context 通道。 |
+| `MemorySkillProvider` | [`packages/skill/skill-filesystem/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill-filesystem/src/index.ts)：`FileSystemSkillProvider` | 出貨的那個 provider 是去磁碟上解 skill 目錄的（第 146 行）；mini 用 dict 撐起來的 provider，讓 離線測試完全不碰檔案系統。 |
+| 清單的 context provider | [`packages/skill/tool-skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/tool-skill/src/index.ts) | 真正的使用端是從 `agent/pre-step` 的 listener 把清單發出去的（第 177、213 行），也就是第 08 章指過的那條 pre-step 通道。mini 沒有 pre-step hook，所以它的清單改搭快照那條 context 通道。 |
 | `skill` 這個 tool | [`tool-skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/tool-skill/src/index.ts) | 內容一樣是按需透過 tool 載入的（第 82 行）：清單和內容一樣分成兩邊，也是靠同樣那兩條通道送出去。 |
-| 拿快照去重當變更訊號 | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts)：`skills/change` | 真正的 registry 會用一個 bus 事件公告 provider 有變（第 297 行），使用端收到就把快取作廢；mini 則是每次組裝都重算一次，安靜的那些 step 就交給快照去重吸收掉。 |
+| 以快照去重偵測變更 | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts)：`skills/change` | 真正的 registry 會透過 bus 事件公告 provider 變更（第 297 行），讓使用端清除快取；Mini-dsh 則在每次組裝時重算，再由快照去重避免重複寫入。 |
 
-真正的 skills 這一層，在這個 Section 的 Mechanism 之上，還多做了這些：
+真正的 skills 這一層還提供以下功能：
 
 - **層知道 scope。**`SkillLayer implements ScopeLayer`，用的跟 tool registry 是同一套機制，所以 subagent 的 scope 可以看到跟父層不一樣的清單。mini 的層是全域的；它那條覆蓋規則是同一個想法，只是少了一個維度。
 - **provider 手上有一個可以控制的 handle。**註冊收的是一個工廠函式，它會拿到一個 `SkillProviderControl`，所以 provider 可以主動推變更通知，`skills/change` 事件再把通知擴散給有做快取的使用端。mini 每次組裝都重算一次清單，根本沒有快取需要作廢。
 - **有一個檔案系統的 provider。**`FileSystemSkillProvider` 會走過 skill 目錄，只讀摘要、不載內容，所以省 token 這件事，在 I/O 這一層也一樣守得住。
-- **pre-step 那條投遞通道。**真正的清單，是由 `agent/pre-step` 的 listener 追加成 `user/message` 的，`packages/context` 底下大部分東西走的都是這一條。mini 是透過 Section 08 的 context registry，走到同樣那幾筆 log 紀錄。
+- **pre-step 那條投遞通道。**真正的清單，是由 `agent/pre-step` 的 listener 追加成 `user/message` 的，`packages/context` 底下大部分東西走的都是這一條。mini 是透過第 08 章的 context registry，走到同樣那幾筆 log 紀錄。
 
 ---
 
-## Failure modes
+## 常見失敗模式
 
 - **內容直接放進清單，等於永遠為全部付錢。**把每一份指示都內嵌進去，每一次 request 就要扛著全部，可是一個 turn 最多用到一份。`list()` 只給名字和一行說明；`get(name)` 是內容唯一的出口。
-- **清單塞進 system 文字，前綴就被推走了。**Section 08 承諾的是一個位元組都不差的 system 文字；session 中途掛上一個 provider 就會把它改掉，prompt 前綴快取跟著報銷。改成走 context，清單變一次只花一筆 `user/message`，前綴穩穩不動。
-- **不認得的名字直接往外丟例外，會把對話紀錄撕破。**model 遲早會把某個 skill 的名字拼錯。`skill` 這個 tool 的實作丟出例外，Section 05 的 pipeline 用一則正常的 `is_error` 結果回應，turn 就繼續跑下去，而不是把 loop 弄垮。
-- **照時間先後分層，清單就會亂跳。**如果解出來的結果取決於 dict 順序或執行緒的快慢，同樣的註冊就會算出不一樣的清單，而每不一樣一次，就白白多發一筆快照。分層照的是註冊順序，後面的贏：同一組 provider 永遠算出同樣的文字。
+- **把清單放進 system 文字會破壞穩定前綴。** session 中途掛載 provider 時，system prompt 會跟著改變，導致前綴快取失效。改走 context 後，清單每次變更只增加一筆 `user/message`，system 文字仍保持不變。
+- **未知名稱的例外若穿過工具邊界，會留下不完整的對話。** 模型可能拼錯 skill 名稱，因此 `skill` 工具的例外必須由第 05 章的 pipeline 轉成一般 `is_error` 結果，讓 turn 可以繼續執行。
+- **分層結果若依賴執行時序，清單就不穩定。** 若結果取決於 dict 順序或執行緒完成時間，同一組註冊可能產生不同清單，並觸發不必要的快照。改用註冊順序決定覆寫關係，結果就能保持一致。
 - **清單一做快取，就會跟 provider 對不上。**把算好的那一段快取起來，某個註冊已經被撤銷的 provider 還會繼續宣傳一批根本解不出來的 skill。mini 每次組裝都重算一次；讓安靜的 step 不花錢的是快照去重，不是快取。
 
 ---
 
-## 跑跑看
+## 動手驗證
 
-[`src/`](src/) 把 08 搬過來，然後加上：
+[`src/`](src/) 延續第 08 章，並加入：
 
 - [`skills.py`](src/skills.py)（新的）：`SkillRegistry`，provider 分層、同名互相覆蓋的解法；`MemorySkillProvider`；還有那個 plugin，把清單的 context、 `skill` tool 和 `skills` 這個 service 接起來。
-- [`test.py`](src/test.py)：Offline check 證明清單是搭快照那一筆進來的，裡面一份內容都沒有；內容只有在一次 `skill` 呼叫之後，才以 `tool/result` 的身分出現；provider 變了清單就重發，沒變就安安靜靜；後面那層會蓋住一個名字，直到它的撤銷函式被呼叫，下面那層才露出來；不認得的名字就是一則正常的錯誤結果；清單空的時候什麼都不送。
-- [`demo.py`](src/demo.py)：Live demo 讓真的 model 讀清單、自己開口載一份內容，最後用一個 skill 收尾，而那個 skill 的 provider 是在兩個 turn 之間才註冊上去的。
+- [`test.py`](src/test.py)：確認快照只包含 skill 清單，不包含完整內容；內容只有在呼叫 `skill` 後才以 `tool/result` 出現；provider 變更時清單會重發，未變時不會新增事件；後註冊層會覆寫同名項目，撤銷後恢復下層版本；未知名稱會回傳一般錯誤結果；空清單不會送出任何內容。
+- [`demo.py`](src/demo.py)：實機示範讓實際模型讀清單、自己開口載一份內容，最後用一個 skill 收尾，而那個 skill 的 provider 是在兩個 turn 之間才註冊上去的。
 
 ```bash
 python sections/09-skills/src/test.py    # offline check, no key
 ```
 
-Live demo 需要根目錄的 `requirements.txt` 和一把 key；沒有 key 的話，它會安靜地跳過：
+實機示範需要根目錄的 `requirements.txt` 和一把 key；沒有設定 key 時會自動跳過：
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv
@@ -168,6 +168,6 @@ python sections/09-skills/src/demo.py
 
 ---
 
-## 出處
+## 參考資料
 
 - [`docs/subsystems/skills.md`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/subsystems/skills.md)： dsh 自己帶你走一遍 skill registry、它的 provider，還有清單和內容分家這件事。

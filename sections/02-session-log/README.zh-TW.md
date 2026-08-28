@@ -1,36 +1,36 @@
-<!-- source: README.md @ d5b8152 -->
+<!-- source: README.md @ 3705bd7 -->
 
 # 02 · Session log
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> model 要乾淨的歷史，存到磁碟要每一筆紀錄，compaction 要縮小 model 看得到的內容。一份清單沒辦法同時服務三種需求，所以先把發生過的事都只記一次，再從那份紀錄整理出各自需要的內容。
+> 模型需要乾淨的對話歷史，持久化需要完整紀錄，compaction 則需要縮小模型看到的內容。一份可修改的訊息清單無法同時滿足這三種需求。解法是先完整記下發生過的事，再根據用途推導出不同視圖。
 
-一次 agent turn 產出的東西遠遠不只訊息：model 串流回來的一段段 chunk、tool 的呼叫和結果、turn 的標記、request 標頭。
+一次 agent turn 產生的不只是訊息，還包括模型串流回傳的 chunk、工具呼叫與結果、turn 邊界標記，以及 request header。
 
-同一次 turn 會被拿來做三種不同用途。model 要的是乾淨的歷史，存到磁碟要的是每一筆紀錄，compaction 要的是縮小 model 看得到的內容，但不能弄丟原本的紀錄。
+這些資料會被用在三個不同場景。模型呼叫只需要對話內容；寫入磁碟時希望保留所有事件；compaction 要縮短模型可見的歷史，但又不能刪掉原始紀錄。
 
-最直覺的做法，是共用一份 `messages` 清單，turn 跑到哪就往後追加到哪。
+最直覺的做法，是維護一份共用的 `messages` 清單，turn 執行到哪裡就追加到哪裡。
 
-一份清單只能滿足一種需求。串流出來的 chunk 不是把它弄髒，就是整個消失；compaction 只能破壞性地去改它；而程式掛掉之後，你手上就只剩清單當下剛好裝著的東西，沒有任何辦法重建它是怎麼變成這樣的。
+但單一清單無法兼顧所有需求。如果保留 chunk，模型歷史就會混入中間資料；如果不保留，串流過程就無法重放。compaction 只能直接改寫清單，而程式中斷後，也無法追溯這份清單是如何形成的。
 
-session log 把這件事翻了過來：發生過的每一件事都記一次，只能往後追加，然後 model 看到的東西是 *推導* 出來的。要做到這件事，log 得先：
+session log 改用另一種設計：發生過的每件事只記錄一次，而且 log 只能追加；模型看到的歷史則在需要時從 log *推導*。這需要以下規則：
 
-1. 每個 session 留一份只能追加的 log，裡面是凍結的事件；一個事件的 **seq** 就是它在 log 裡的索引，永遠不變。
-2. 維護一份 **surface**：照順序排的一串 seq，只收那些會產出訊息的事件，其他都不收。
-3. model 的歷史要用的時候才從 surface 推導出來（`derive_messages()`），絕不存起來。
-4. 每一個 payload 都在追加的那道邊界上先驗證、再複製一份，這樣歷史事後就改不動了。
-5. 每一次成功追加都推給訂閱者，這樣持久化和各種觀察者才能是 plugin，而不是核心裡的程式碼。
+1. 每個 session 擁有一份只能追加的 log，其中每個事件都是不可變的。事件的 **seq** 就是它在 log 中的索引，一旦產生就不會改變。
+2. 維護一份 **surface**：一組有順序的 seq，只指向會轉成訊息的事件。
+3. 模型歷史不另外儲存，而是在每次需要時通過 `derive_messages()` 從 surface 推導。
+4. 所有 payload 都在追加邊界先驗證、再複製，避免呼叫端事後修改歷史。
+5. 每次成功追加都會通知訂閱者，讓持久化和監看功能可以以 plugin 形式實作，不需寫死在核心中。
 
 ---
 
-## Mechanism
+## 核心機制
 
-三個零件：
+本章有三個核心元件：
 
-- **Log**：一份只能追加的清單，裡面都是凍結的事件。一個事件長成 `{seq, type, payload}`，而它的 seq 就等於它的索引。
-- **Surface**：一串照順序排的 seq，在追加的當下就順手維護好：剛好就是 `user/message`、`assistant/message` 和 `tool/result` 這三種事件。
-- **`derive_messages()`**：把 surface 投影成一個個 `Message` 物件，每呼叫一次就重算一次。
+- **Log**：只能追加的事件清單。每個事件的格式為 `{seq, type, payload}`，且 seq 與清單索引相同。
+- **Surface**：一組有順序的 seq，在事件追加時同步更新。目前只包含 `user/message`、`assistant/message` 和 `tool/result`。
+- **`derive_messages()`**：將 surface 投影成 `Message` 清單，每次呼叫都會重新計算。
 
 追加是唯一的寫入動作，所有的把關也都在這裡：
 
@@ -63,7 +63,7 @@ def derive_messages(self):
     ]
 ```
 
-這個 store 會以 `sessions` 這個 service 的身分，掛到 Section 01 的 kernel 上，所以整份 session log 跟其他東西一樣，就是一次可以反向撤銷的註冊：
+這個 store 會以 `sessions` service 的形式掛到第 01 章的 kernel，因此 session log 也遵循相同生命週期，卸載時可以完整撤銷註冊：
 
 ```python
 def session_log_plugin(ctx):
@@ -80,67 +80,67 @@ append(event_type, payload) ──► validate + copy ──► freeze ──►
 derive_messages() ──► for seq in surface ──► log[seq] ──► Message(role, content)
 ```
 
-看一下這樣拆開，換到了什麼好處。`assistant/chunk` 是實實在在記進 log 的事件，所以串流可以重放；但它永遠到不了 model 那裡，因為它不是 surface 的型別。
+這樣拆分後，`assistant/chunk` 仍會完整寫入 log，方便日後重放串流；但因為它不屬於 surface 型別，所以不會出現在模型歷史中。
 
-也因為 model 看到的是 surface，不是 log，Section 03 才能只動 surface 就把這個視圖縮小，而 log 裡每一筆紀錄都還在。
+也因為模型看到的是 surface，而不是 log，第 03 章才能只修改 surface 就縮小這份視圖，同時保留 log 中的每筆原始紀錄。
 
 ### 改了什麼
 
-跟 Section 01 比起來：
+與第 01 章相比：
 
-- `message.py`、`standin.py` 和 `kernel.py` 原封不動搬過來；跟 01 的 diff 就是這個 Section 的 Mechanism，多的沒有。
+- `message.py`、`standin.py` 和 `kernel.py` 完整沿用，因此 diff 只會顯示本章新增的 session log 機制。
 - 新增 `session_log.py`：`Session`（log、surface、`append`、`derive_messages`）、 `SessionStore`，還有 `session_log_plugin`。
 - session log 是第一個真正掛到 01 那個 kernel 上的 service：`provide("sessions")` 會把它的撤銷動作放到這個 plugin 的 fiber 上，所以卸載 session log 就只是一次 `dispose()`。
 
 ---
 
-## In real dsh
+## 對照真正的 dsh
 
-所有指過去的連結都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。session log 在真正的 dsh 裡的位置是 [`packages/core/session`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session)。
+以下連結皆指向研究版本 [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。session log 在真正的 dsh 裡的位置是 [`packages/core/session`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session)。
 
 | Mini-dsh | 真正的 dsh | 說明 |
 | --- | --- | --- |
 | `Session`（log、`append`） | [`packages/core/session/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts)：`class Session` | `append()` 會先驗證（`snapshotJsonValue`）、深層凍結、驗證 surface 的轉換，最後才推進去；`seq == log.length` 是一條永遠成立的規則。 |
-| `surface` + `derive_messages()` | [`packages/core/session/src/surface.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/surface.ts)：`SurfaceManager`、`deriveEventMessage` | surface 的事件剛好就是 `user/message`、`assistant/message`、`tool/result` 三種。`SurfaceOp` 不是 `'append'`，就是 `{op: 'replace', start, end}`；replace 那一支是 Section 03 的事。 |
+| `surface` + `derive_messages()` | [`packages/core/session/src/surface.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/surface.ts)：`SurfaceManager`、`deriveEventMessage` | surface 的事件剛好就是 `user/message`、`assistant/message`、`tool/result` 三種。`SurfaceOp` 不是 `'append'`，就是 `{op: 'replace', start, end}`；replace 對應的 replace 分支會在第 03 章實作。 |
 | 事件字典 `{seq, type, payload}` | [`packages/core/session/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/types.ts)：`SessionEvent`、`SessionEventMap` | 核心事件型別有 13 種（turn 和 step 的標記、user、assistant、tool 的往來、請求標頭）；整個 repo 加起來 45 種（[`known-event-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/known-event-types.ts)），還能用 declaration merging 再擴充。 |
 | `SessionStore`, `ctx.get("sessions")` | [`packages/core/session/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts)：`class SessionStore extends Service` | ctx 上的鍵是 `ctx.sessions`；建立 session 會發出 `session/created`，而且丟例外就能否決這次建立。 |
 | `emit("session/event", ...)` | `index.ts` 裡的 `session/event` bus 事件 | 這是追加成功之後往外推的那條流。真正的 store 還會發出 `session/disposed` 和 `session/flush`，後者是一道會被等待的持久化屏障。 |
 
-真正的 session log 在這個 Section 的 Mechanism 之上，還多做了這些：
+真正的 session log 還提供以下功能：
 
-- **一道持久化屏障。** `session/flush` 是一個可以平行跑、而且會被 *等待* 的 bus 事件：持久化先把東西寫完，dsh 才往下走。我們 kernel 的 `emit` 是同步的，發出去就不管了，所以這道屏障這裡只是指給你看，沒有做。
-- **持久化是一個個 plugin。** 抽象的 [`SessionPersistence`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence/src/index.ts) service（`ctx.sessionPersistence`）完全靠 bus 事件掛上去（[`coordinator.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence/src/coordinator.ts)）：後端一路跟著 `session/event` 和 `session/flush` 走，而核心的 `Session` 從頭到尾不知道世界上有硬碟這種東西。dsh 內建 [JSONL](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence-jsonl) 和 [SQLite](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence-sqlite) 兩種後端。Ceiling：JSONL 以外的持久化後端只指給你看，沒有做。
-- **另一種投影，不是這裡講的這種。** [`packages/session/session-projection`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-projection) （`ctx.sessionProjections`）會把已經寫進去的事件，整理成給前端看的 UI 讀取模型。它跟 `deriveMessages()` 沒有關係，而 UI 本身在 Ceiling 之上。
-- **改寫 surface。** `SurfaceOp` 的 `replace` 那一支，讓 compaction 可以把 model 看到的東西縮小，而 log 依然只能追加（[`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts)）： Section 03 做的就是這件事。
+- **持久化屏障。** `session/flush` 是可平行執行、而且呼叫端會等待完成的 bus 事件：dsh 會等持久化寫入完成後才繼續。Mini-dsh 的 `emit` 是同步且不等待後續工作，因此本教學只說明這項設計，沒有實作屏障。
+- **持久化由 plugin 提供。** 抽象的 [`SessionPersistence`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence/src/index.ts) service（`ctx.sessionPersistence`）透過 bus 事件接入（[`coordinator.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence/src/coordinator.ts)）。後端監聽 `session/event` 與 `session/flush`，核心 `Session` 不需知道資料如何寫入磁碟。dsh 內建 [JSONL](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence-jsonl) 和 [SQLite](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence-sqlite) 後端；本教學只示範 JSONL。
+- **另一種投影，不是這裡講的這種。** [`packages/session/session-projection`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-projection) （`ctx.sessionProjections`）會把已經寫進去的事件，整理成給前端看的 UI 讀取模型。它跟 `deriveMessages()` 沒有關係，而 UI 本身不在本教學的實作範圍內。
+- **改寫 surface。** `SurfaceOp` 的 `replace` 對應分支，讓 compaction 可以把 model 看到的東西縮小，而 log 依然只能追加（[`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts)）：第 03 章做的就是這件事。
 
 ---
 
-## Failure modes
+## 常見失敗模式
 
-- **會產出訊息、卻被 surface 漏掉的事件，等於不存在。** 你加了一個新的事件型別，它本該送到 model 面前，卻沒登記進 `SURFACE_TYPES`，那 `derive_messages()` 就會默默把它丟掉。真正的 dsh 也是為了同一個理由，才把這份對照集中放在 `deriveEventMessage` 裡。
-- **有訂閱者拋錯，追加就卡住。** `session/event` 這條流是同步的，所以一個壞掉的監聽器會讓例外一路穿過 `append()` 拋出來。真正的 dsh 在持久化的協調器裡，把每個監聽器的例外各自收住，這樣一個後端才卡不死整份 log。
+- **該進入模型歷史的事件若未加入 surface，就會被忽略。** 新事件型別如果沒有登記在 `SURFACE_TYPES`，`derive_messages()` 不會將它轉成訊息。真正的 dsh 也基於相同原因，將這份對照集中在 `deriveEventMessage` 中。
+- **訂閱者拋錯會中斷追加。** `session/event` 是同步事件，因此監聽器的例外會從 `append()` 繼續向外拋。真正的 dsh 會在持久化協調器中隔離各監聽器的錯誤，避免單一後端阻塞整份 log。
 - **先驗證再複製，把關的是 JSON 的形狀，不是意思。** `json` 來回轉一圈，會默默把 tuple 變成 list，`NaN` 也照收；一個 payload 撐過這一關，保證的只是它是純粹的資料，不保證它就是你本來想寫的那個 payload。
-- **到處都指著 seq，所以原地刪除本來就做不到，而且是故意的。** surface、那條事件流，還有任何一筆存下來的紀錄，指的全是 seq。刪掉或重排 log 裡的紀錄，會把它們一起弄壞；要拿掉東西，只能改投影（Section 03），絕不能對 log 動刀。
-- **log 以外的狀態，重放不出來。** 只要有人把訊息清單快取起來，或是自己留著一份可以改的彙總，歷史一旦重新推導，手上那份馬上就對不上了。只有每一次寫入都走 `append()`， log 才真的是唯一那份留得住的事實。
+- **seq 被多處引用，因此不能原地刪除事件。** surface、事件流與持久化資料都依賴固定 seq。刪除或重排 log 會破壞這些參考；若要隱藏內容，只能修改投影（第 03 章），不能改動原始 log。
+- **log 以外的狀態無法重放。** 如果程式另外快取訊息清單或維護可修改的摘要，重新推導歷史時就可能不一致。所有寫入都必須經過 `append()`，才能讓 log 成為唯一可持久化的真相來源。
 
 ---
 
-## 跑跑看
+## 動手驗證
 
-[`src/`](src/) 把 01 搬過來，再加上：
+[`src/`](src/) 延續第 01 章，並加入：
 
 - [`session_log.py`](src/session_log.py)：`Session`（只能追加的 log、surface、 `derive_messages()`）、`SessionStore`，還有把它掛成 `sessions` service 的 `session_log_plugin`。
-- [`test.py`](src/test.py)：seq 永遠等於索引、surface 只挑該挑的、chunk 對 model 隱形、歷史是推導出來而不是存起來的、事件真的凍結、追加邊界會擋下不該進來的東西、bus 那條事件流確實會推出來，還有重複的 session id 會被擋掉。
+- [`test.py`](src/test.py)：確認 seq 永遠等於索引、surface 只包含應出現在模型歷史中的事件、chunk 不會進入模型視圖、歷史會即時推導、事件不可變、追加邊界會拒絕不合法資料、bus 事件確實送出，以及重複的 session id 會遭拒。
 
 ```bash
 python sections/02-session-log/src/test.py   # offline checks, no key
 ```
 
-這個 Mechanism 完全不會呼叫 model。檢查裡動用 Scripted stand-in，只是為了把一次像樣的 turn 串流進 log，好讓 `assistant/chunk` 事件是真的；要等 loop 出現（Section 04）才會有 `demo.py`。
+這項機制不會呼叫模型。測試使用 Scripted stand-in，只是為了產生真實的 `assistant/chunk` 事件並寫入 log；第 04 章加入 loop 後才會提供 `demo.py`。
 
 ---
 
-## 出處
+## 參考資料
 
 - [`docs/subsystems/session.md`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/subsystems/session.md)： dsh 自己寫的 session 子系統文件。
 - [`packages/core/session/README.md`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/README.md)：這個套件自己的 README。
