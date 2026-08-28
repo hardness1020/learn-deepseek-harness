@@ -1,10 +1,10 @@
-<!-- source: README.md @ 2e2d45e -->
+<!-- source: README.md @ 3705bd7 -->
 
 <div align="center">
 
 # learn-deepseek-harness
 
-**一切都是 plugin：从零重建 DeepSeek Harness。**
+**一切皆为 plugin：从零拆解并重建 DeepSeek Harness。**
 
 [![Studied: dsh 0.1.0-rc.7](https://img.shields.io/badge/Studied-dsh_0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -15,53 +15,53 @@
 
 </div>
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）是一套 agent harness：一个大型的 TypeScript 代码库，建立在 Cordis 之上，里面每一样东西都是 plugin。一上来就直接读它的源代码会很吃力，因为它的设计想法散落在很多包里。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）基于 Cordis 构建，是一套 agent harness。它是个庞大的 TypeScript 项目，从工具到完整子系统都以 plugin 组成。如果一开始就直接读源代码，很容易迷失在各个软件包之间，因为核心设计分散在整个代码库中。
 
-这份 tutorial 采取不同的做法。使用 Python 标准库，分成 4 个 Phase、14 个 Section，一路重建出一个最小的版本，叫做 Mini-dsh。每个 Section 只加一个 Mechanism，并用一个 Offline check 加以验证。接着再看真正的 dsh 如何实现。
+这份教学换一种读法：只用 Python 标准库，分成 4 个阶段、14 个章节，逐步实现一个最小版本 Mini-dsh。每章只加入一项核心机制，再用离线测试验证行为，最后对照真正的 dsh 如何实现。
 
-**目录**：[全貌](#全貌) · [怎么读](#怎么读) · [Sections](#sections) · [项目结构](#项目结构) · [怎么跑](#怎么跑) · [怎么参与](#怎么参与) · [延伸阅读](#延伸阅读)
+**目录**：[架构概览](#架构概览) · [阅读方式](#阅读方式) · [章节索引](#章节索引) · [项目结构](#项目结构) · [运行方式](#运行方式) · [参与贡献](#参与贡献) · [延伸阅读](#延伸阅读)
 
-## 全貌
+## 架构概览
 
-实现内容全都在这张图上：kernel 负责把每个 plugin 挂载起来，loop 负责把整套流程跑起来，而要碰到 log 以外的东西时，就得经过那几道 seam。
+这张图汇总了 Mini-dsh 的整体架构。kernel 负责挂载与卸载 plugin，loop 负责推进 agent 流程，任何需要访问 log 以外资源的操作，都必须经过明确的能力接口（seam）。
 
 ![Mini-dsh 架构](assets/architecture.png)
 
-> 一切都是 plugin，而且每一次注册都可以反向撤销。
+> 一切都是 plugin，每一次注册也都能完整撤销。
 
-## 怎么读
+## 阅读方式
 
-每个 Section 都用同一套 Lens 来读，固定分成四个部分：
+每一章都沿用相同的分析架构，固定分成四个部分：
 
-1. **Opening**：还没碰到任何代码之前，先讲清楚这个 Section 要回答的那一个设计问题。
-2. **Mechanism**：你要动手做出来的那些零件，配上代码片段和一张流程图。
-3. **In real dsh**：一张对照表，把你写的 Mini-dsh 类和函数，对到真 dsh 里对应的类、函数和文件，每个链接都固定在 Studied version 上。表格后面再补上真系统有做、而 Mini-dsh 没做的那些部分，也就是 Ceiling。
-4. **Failure modes**：少了这个 Mechanism 会坏掉什么，而不是只讲有了它会动什么。
+1. **开场**：先不看代码，直接说明本章要解决的设计问题。
+2. **核心机制**：逐一拆解需要实现的组件，并搭配代码片段与流程图说明。
+3. **对照真正的 dsh**：将 Mini-dsh 的类与函数，对应到真正 dsh 中的实现文件。所有链接都固定在本教学研究的版本，并补充 Mini-dsh 为了保持精简而没有实现的功能。
+4. **常见失败模式**：解释少了这项机制后，系统会在哪些地方出问题。
 
-Section 要照顺序读：每一个都把前一个的 `src/` 原封不动搬过来，然后只加一个 Mechanism，这就是 Carry-forward。读到哪个 Section，就顺手把它的 Offline check 跑一遍。想单独看清楚某一个 Mechanism，就把相邻的两个 `src/` 目录 diff 一下，跑出来的差异刚好就是那个 Mechanism。
+建议依序阅读。每一章都会完整沿用前一章的 `src/`，只添加一项机制，这就是本教学的 Carry-forward 结构。读完一章后，可以直接运行对应的离线测试。若想聚焦某项机制，只要比较前后两章的 `src/` 目录，diff 中的差异就是该章添加的内容。
 
-## Sections
+## 章节索引
 
-| # | Section | 设计问题 | Mechanism |
+| # | 章节 | 设计问题 | 核心机制 |
 |---|---------|-----------------|-----------|
 | | **Foundation** | | |
-| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么 mini-dsh 的核心只讲自己那套 Message 格式，而且一定要隔着一个随时可以换掉的 Model seam，才去问 model？ | 不绑 provider 的 `Message`、会流式输出的 Model seam、Scripted stand-in |
-| 01 | [Kernel](sections/01-kernel/README.zh-CN.md) | 为什么卸载一个 plugin 这件事，可以交给框架去做对，而不是每个 plugin 自己收尾？ | 可反向撤销的 fiber/effect 注册 |
-| 02 | [Session log](sections/02-session-log/README.zh-CN.md) | 为什么要从一份 log 推导出 model 看到的历史，而不是直接存一份消息列表？ | 只能追加的 log + surface + deriveMessages |
-| 03 | [Compaction](sections/03-compaction/README.zh-CN.md) | 如果 log 只能追加，compaction 要怎么拿掉 model 看得到的东西？ | surface 的 `replace` 操作 |
+| 00 | [Setup](sections/00-setup/README.zh-CN.md) | 为什么核心只使用统一的 `Message` 格式，并通过可替换的 Model seam 调用模型？ | 不绑定 provider 的 `Message`、流式 Model seam、Scripted stand-in |
+| 01 | [Kernel](sections/01-kernel/README.zh-CN.md) | 为什么 plugin 的卸载与清理应由框架统一管理？ | 可反向撤销的 fiber/effect 注册 |
+| 02 | [Session log](sections/02-session-log/README.zh-CN.md) | 为什么模型历史应从 log 推导，而不是另外保存一份消息列表？ | append-only log + surface + `derive_messages()` |
+| 03 | [Compaction](sections/03-compaction/README.zh-CN.md) | 在 log 只能追加的情况下，compaction 如何缩小模型可见的历史？ | surface 的 `replace` 操作 |
 | | **The Loop** | | |
-| 04 | [Agent loop](sections/04-agent-loop/README.zh-CN.md) | 为什么每一个 step 都要重新组一次 prompt、重新推一次历史？ | turn/step 状态机，log 是唯一持久的状态 |
-| 05 | [Tools](sections/05-tools/README.zh-CN.md) | 为什么一个被拒绝、或是执行出错的调用，还是会产生一条正常的 tool/result？ | 有作用域的 registry + pre/ask/guard/execute/post pipeline |
-| 06 | [Scheduler](sections/06-scheduler/README.zh-CN.md) | 为什么可以并行跑的调用会叠在一起跑，互斥的调用会挡成一道关卡，而还没开始就被中止的调用，会拿到一个合成出来的结果？ | 四阶段的并行 tool scheduler |
-| 07 | [Inbox](sections/07-inbox/README.zh-CN.md) | 为什么 inbox 要有两个投递目标，而且只在 step 的边界认领？ | next-turn/next-step 两种介入时机 |
-| 08 | [System prompt](sections/08-system-prompt/README.zh-CN.md) | 为什么动态的状态要当成一条重新发出的 user 消息，而不是写进 system 文本里？ | 照顺序跑的 provider -> system 文本 + tool 列表 + runtime-context 快照 |
-| 09 | [Skills](sections/09-skills/README.zh-CN.md) | 为什么 skill 列表是当成 context 注入，内容却要靠一次 tool 调用才加载进来？ | 分层的 provider registry；列表先注入，内容按需加载 |
+| 04 | [Agent loop](sections/04-agent-loop/README.zh-CN.md) | 为什么每个 step 都要重新组装 prompt，并从 log 推导历史？ | turn/step 状态机，log 是唯一可持久状态 |
+| 05 | [Tools](sections/05-tools/README.zh-CN.md) | 为什么被拒绝或运行失败的调用，仍然必须产生 `tool/result`？ | scoped registry + pre/ask/guard/execute/post pipeline |
+| 06 | [Scheduler](sections/06-scheduler/README.zh-CN.md) | 为什么并行安全的调用会重叠执行，互斥调用会形成 barrier，而取消后尚未开始的调用会收到合成结果？ | 四阶段并行工具 scheduler |
+| 07 | [Inbox](sections/07-inbox/README.zh-CN.md) | 为什么 inbox 需要 `next-turn` 与 `next-step` 两种目标，并只在 step 边界认领？ | next-turn/next-step 两种介入时机 |
+| 08 | [System prompt](sections/08-system-prompt/README.zh-CN.md) | 为什么动态状态要以 user 消息重新发送，而不是写进 system prompt？ | 有顺序的 provider -> system prompt + 工具列表 + runtime-context 快照 |
+| 09 | [Skills](sections/09-skills/README.zh-CN.md) | 为什么 skill 列表以 context 注入，完整内容却由工具按需加载？ | 分层 provider registry；列表先注入，内容按需加载 |
 | | **Capabilities** | | |
-| 10 | [Capability seams](sections/10-capability-seams/README.zh-CN.md) | 一个能力要到什么时候才值得拆成三份？ | Definition/Provider/Consumer 三个抽象基类（fs/shell/sandbox/llm） |
-| 11 | [Jobs](sections/11-jobs/README.zh-CN.md) | job id 一旦公开出去，取消的权责归谁？ | 只有拥有者能动的后台工作协议 |
-| 12 | [Subagent](sections/12-subagent/README.zh-CN.md) | 为什么接口是架在“开一个 child、交回一次 run”上面，而不是从 agent 继承出一个子类？ | 具名 provider 的委派 registry |
+| 10 | [Capability seams](sections/10-capability-seams/README.zh-CN.md) | 一个能力在什么情况下，才值得拆成 Definition、Provider 与 Consumer？ | Definition/Provider/Consumer 角色分离（fs/shell/sandbox/llm） |
+| 11 | [Jobs](sections/11-jobs/README.zh-CN.md) | job id 公开后，谁拥有读取、等待与取消它的权限？ | 只允许拥有者操作的背景工作协议 |
+| 12 | [Subagent](sections/12-subagent/README.zh-CN.md) | 为什么 subagent 接口是「启动 child，返回 run」，而不是继承 `Agent`？ | 具名 provider 的委派 registry |
 | | **Composition** | | |
-| 13 | [Composition](sections/13-composition/README.zh-CN.md) | 为什么一个 patch 是整份 config 的替换，而不是深层合并？ | 在一份空的 entry 列表上，照顺序叠 patch 层 |
+| 13 | [Composition](sections/13-composition/README.zh-CN.md) | 为什么 patch 会替换完整 config，而不是深层合并？ | 在空的 entry 列表上依序叠加 patch 层 |
 
 ## 项目结构
 
@@ -82,19 +82,19 @@ learn-deepseek-harness/
     ├── ...
     └── 13-composition/
         ├── README.md
-        └── src/         # 12's src verbatim + this Mechanism, test.py, demo.py
+        └── src/         # 完整沿用第 12 章的 src，并加入本章机制、test.py、demo.py
 ```
 
-## 怎么跑
+## 运行方式
 
-这份 tutorial 讲的每件事，都由 Offline check 来证明。它们只用标准库，不用安装任何东西、不用 API key、也不用网络，而且每次跑出来的输出都一样。
+教学中的每项行为都有离线测试可验证。这些测试只使用 Python 标准库，不需安装额外软件包、API key 或网络，而且每次运行都会得到相同结果。
 
 ```bash
 python sections/00-setup/src/test.py     # one section
 for t in sections/*/src/test.py; do python "$t" || break; done   # all sections
 ```
 
-会碰到 model 的 Section（04 以后）还另外附一个 Live demo，拿事先写好的 turn 去调用真正的 Anthropic API。没设 key 的话，它会安静地跳过。
+从第 04 章开始，需要调用模型的章节也会提供在线示例，使用预先写好的 turn 调用 Anthropic API。如果没有设置 API key，示范会自动跳过，不会报错。
 
 ```bash
 pip install -r requirements.txt
@@ -102,14 +102,14 @@ cp .env.example .env   # then fill in ANTHROPIC_API_KEY
 python sections/04-agent-loop/src/demo.py
 ```
 
-## 怎么参与
+## 参与贡献
 
-- **把某个 Section 挖深**：更精准的代码片段、更好的 failure mode，或是给既有的 Mechanism 一个更严谨的检查。
-- **纠正错误**：不管是 mini 对到真 dsh 的对照，还是任何一句关于 dsh 的说法，只要跟锁定的那版源代码对不上，都欢迎指出来。
+- **深化某个章节**：补上更精准的代码片段、更完整的失败模式，或更严谨的测试。
+- **修正内容**：如果 Mini-dsh 与真正 dsh 的对照有误，或文中任何说法与锁定版本的源代码不一致，欢迎提出修正。
 
 ## 延伸阅读
 
 - [Cordis primer](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/cordis-primer.md)：dsh 自己写的入门文，介绍它底下那套 plugin runtime。
 - [Cordis tutorial](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/cordis-tutorial)：教你怎么写真正的 dsh plugin，这份 tutorial 把写 plugin 的操作细节全都交给它。
-- [Subsystem docs](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/subsystems)：每个子系统各一份设计文档，对应的就是每个 Section 里 In-real-dsh 的那一格。
+- [Subsystem docs](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/subsystems)：每个子系统都有独立的设计文档，可搭配各章的「对照真正的 dsh」段落阅读。
 - [cordiverse/cordis](https://github.com/cordiverse/cordis)：dsh 内嵌进来的上游框架。

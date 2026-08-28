@@ -2,11 +2,12 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A side errand should not spend the parent's context. Subclassing the
-> agent assumes whatever answers it lives in this process, and often it
-> does not. So the parent asks a name and takes back a run.
+> A delegated task should not consume the parent's context window.
+> Subclassing the agent assumes the child runs in the same process, which
+> is not always true. The parent therefore selects a provider by name and
+> receives a run through a small interface.
 
-Section 11 taught mini-dsh to put work in the background, but every
+Section 11 taught Mini-dsh to put work in the background, but every
 thought still happens in one context window. Send the agent on a
 side errand, summarize a package, chase a failing test, and the
 whole errand's transcript rides along in the parent's history
@@ -14,7 +15,7 @@ forever, crowding out the work the errand was supposed to serve.
 Delegation is the escape: hand the task to a child with a session,
 a tool scope, and a context of its own, and take back one answer.
 
-The obvious build is a subclass. The section 04 `Agent` already
+The first implementation that comes to mind is a subclass. The section 04 `Agent` already
 knows how to run a turn, so `class Subagent(Agent)` looks like a
 head start. But what answers a delegation is not always an agent in
 this process. Real dsh ships providers that fork the process, drive
@@ -22,8 +23,8 @@ another product over a wire protocol, or wrap a different harness
 entirely; a base class would force every one of them to fake an
 Agent's insides just to satisfy the registry.
 
-So: why an interface over "establish a child, hand back a run",
-not a subclassed agent?
+Why should subagents use a provider interface instead of inheriting from
+`Agent`?
 
 Because the parent-side contract is four verbs, and a class is a
 commitment to everything else. The section builds it as:
@@ -91,7 +92,7 @@ The in-process provider shows why the contract stays this thin. It
 establishes a child through the same `sessions`, `agents`, and
 `tools` services the parent came from, drives one `send()` on the
 run's own thread, and reads the answer off the child's log. The
-child's whole story stays in its own session; the only thing that
+child's complete execution record stays in its own session; the only thing that
 crosses back is the run. A provider with no agent behind it at all,
 one that answers from a cache, a subprocess, or another product,
 returns the same triple, and neither the registry nor the tool can
@@ -180,16 +181,16 @@ Compared with section 11:
   `message.py`, `scheduler.py`, `session_log.py`, `skills.py`,
   `standin.py`, `system_prompt.py`, `tools.py`. `subagent.py` is
   the only new source file, so the diff against 11 is this
-  section's Mechanism, nothing else.
-- The Mechanism is pure composition: the child is established
+  section's mechanism, nothing else.
+- The mechanism is pure composition: the child is established
   through the section 02 sessions, section 04 agents, and section
   05 tool services; the run is section 11's protocol triple; the
   background mode hands that triple to the job registry, making
   the subagent the second producer section 11 promised.
 - The log gained no new event type. A delegation's entire public
   life in the parent's log is a `tool/call` and a `tool/result`;
-  the rest of the story is an ordinary session of its own.
-- `demo.py`: the Live demo delegates to a child running against
+  the rest is an ordinary session of its own.
+- `demo.py`: the live demo delegates to a child running against
   the real API foreground and quotes its answer, then backgrounds
   a second child whose completion notice wakes the parent in a
   turn it never asked for.
@@ -212,17 +213,15 @@ The layer is the package family
 | `jobs = ctx.get("jobs")`, optional lookup | [`tool-subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/tool-subagent/src/index.ts) (lines 402-405) | The real delegation tool acquires jobs by `ctx.get('jobs')`, not `inject`: no registry mounted means no background mode, never a silent foreground fallback. |
 | the `subagent` tool | [`packages/subagent/tool-subagent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/tool-subagent/src/index.ts) | The shipped Consumer; even its tool name is configurable, because the schema the model sees belongs to the consumer, never to a provider. |
 
-What the real subagent layer adds on top of this section's
-Mechanism:
+Additional features in the production subagent layer:
 
 - **Continuable children.** `startContinuable()` plus a
   continuation manager make a child durable across turns,
   reachable from the parent between them. Per
   [`run-settlement.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/subagent/subagent/src/run-settlement.ts)
   (lines 2-4) only the one-shot background mode touches jobs;
-  continuable children skip the registry entirely. Continuable
-  subagents sit above this rebuild's Ceiling: pointed at here,
-  not rebuilt.
+  continuable children skip the registry entirely. This tutorial links to
+  continuable subagents but does not rebuild them.
 - **A provider zoo.** `subagent-spawn-in-process`,
   `subagent-fork-in-process`, `subagent-acp`, `subagent-codex`,
   `subagent-claude-code`, `subagent-dsh-sdk`: the interface
@@ -230,7 +229,7 @@ Mechanism:
   behind them, which is why the registry never asked for one.
 - **Ownership transfer on fulfillment.** When a start fulfills,
   the child's ownership transfers to the parent, so a parent that
-  dies takes its delegations down with it; the mini's children
+  dies takes its delegations down with it; Mini-dsh's children
   live and die with the process instead.
 - **A busier runtime.** Bus events (`subagent/provider-added`,
   `subagent/provider-removed`, `subagent/start`, `subagent/end`,
@@ -258,16 +257,16 @@ Mechanism:
   a call and a result, the child keeps everything.
 - **A run without cancel is a child nobody can stop.** Foreground
   can at least wait it out; a background child with no `cancel` in
-  the triple makes `job_kill` a lie, settling "killed" while the
+  the triple makes `job_kill` inaccurate, settling "killed" while the
   work runs on. The triple carries the stop switch precisely so
   section 11's fence has something real behind it.
-- **An unknown name that raises tears the transcript.** The
+- **Raising on an unknown name leaves the transcript incomplete.** The
   `LookupError` for a name nobody registered must leave through
   the section 05 pipeline as a normal `is_error` result; let it
   escape and the model's question loses its answer, and replay
   breaks at the same row.
-- **A silent foreground fallback makes background a lie.** With no
-  job registry mounted, quietly running the task inline would
+- **A silent foreground fallback violates the requested mode.** With no
+  job registry mounted, running the task inline would
   block the turn for exactly as long as the model tried not to
   wait, with no id to kill. The tool refuses loudly instead, and
   the refusal is an ordinary result the model can route around.
@@ -282,7 +281,7 @@ Mechanism:
   registry, the `SubagentRun` contract, the in-process provider,
   and the `subagent_tools(owner)` plugin factory mounting the
   delegation tool with both modes.
-- [`test.py`](src/test.py): the Offline check proves a foreground
+- [`test.py`](src/test.py): the offline check proves a foreground
   delegation answers with the child's reply out of the child's own
   session, two providers behind one tool stay interchangeable when
   one is not an agent at all, an unknown name is a normal error
@@ -290,7 +289,7 @@ Mechanism:
   and controls need no new code, background without a job registry
   refuses loudly, and a crashed child comes back as a normal error
   result.
-- [`demo.py`](src/demo.py): the Live demo delegates to a child
+- [`demo.py`](src/demo.py): the live demo delegates to a child
   running against the real API and quotes its answer, then
   backgrounds a second child whose completion notice wakes the
   parent.
@@ -299,8 +298,8 @@ Mechanism:
 python sections/12-subagent/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it
-skips politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv

@@ -6,7 +6,7 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 > and their words must land identically every step. So anything that
 > changes between steps cannot live there.
 
-Section 07's request is honest but bare. `_step()` pulls schemas
+Section 07's request accurately reflects history but remains minimal. `_step()` pulls schemas
 straight off the tool registry and ships no system text at all: the
 model is never told who it is, how it should behave, or what the
 world looks like right now.
@@ -20,19 +20,19 @@ request.
 And some state is dynamic. A clock, a working directory: the model
 needs the current reading, but bake it into the system text and no
 two steps ship the same prompt. Providers cache on a stable prompt
-prefix, so a timestamp in the system text buys a cache miss on every
+prefix, so a timestamp in the system text invalidates the prompt cache on every
 step.
 
-The other obvious build is worse: patch dynamic text into the
-request out-of-band, and it never lands in the log. Replay could not
+Adding dynamic text outside the normal request pipeline creates a different
+problem: it never reaches the log. Replay could not
 rebuild what the model actually saw, which is the whole point of
-section 02.
+Section 02.
 
 So: why is dynamic state a re-emitted user message rather than
 system text?
 
-Because the system text must hold still and the log must stay the
-whole story. For that, assembly must:
+Because the system text must remain stable and the log must preserve the
+complete request history. For that, assembly must:
 
 1. Keep one registry with four provider kinds: sections (static
    system text), contexts (dynamic state), variables (`{{name}}`
@@ -152,8 +152,7 @@ Compared with section 07:
 - `inbox.py`, `kernel.py`, `message.py`, `scheduler.py`,
   `session_log.py`, `tools.py` are carried forward verbatim.
   `system_prompt.py` is the only new source file; the other changes
-  are the assembly pulled through `agent_loop.py`, so the diff
-  against 07 is this section's Mechanism, nothing else.
+  are the assembly pulled through `agent_loop.py`, so the diff against 07 contains only the mechanism introduced here.
 - `agent_loop.py`: `Agent` and `AgentRegistry.create()` gain a
   `prompt` parameter. `_step()` assembles per step, appends the
   snapshot row when it changed, takes the tool list from the
@@ -166,7 +165,7 @@ Compared with section 07:
   assembled system text, and a `user/message` payload may carry
   `"kind": "runtime-context"` to mark a snapshot row. Derived
   history treats both kinds as plain `user` messages.
-- `demo.py`: the Live demo registers a persona section, a real clock
+- `demo.py`: the live demo registers a persona section, a real clock
   and the cwd as contexts, and a tool slow enough for the clock to
   move mid-turn, so the re-emit happens on a real model call.
 
@@ -182,17 +181,16 @@ dedupe lives in the loop:
 
 | Mini-dsh | Real dsh | Notes |
 | --- | --- | --- |
-| `SystemPrompt` in `system_prompt.py` | [`packages/core/system-prompt/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/system-prompt/src/index.ts): `SystemPrompt` | The same four provider kinds behind `section() / context() / variable() / tools()`, each returning a Cordis effect disposer, the real form of the mini's undo callables. |
+| `SystemPrompt` in `system_prompt.py` | [`packages/core/system-prompt/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/system-prompt/src/index.ts): `SystemPrompt` | The same four provider kinds behind `section() / context() / variable() / tools()`, each returning a Cordis effect disposer, the real form of Mini-dsh's undo callables. |
 | `assemble()` returning three artifacts | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/system-prompt/src/index.ts): `PromptAssembly`, `renderPrompt` | Assembly resolves into a `PromptAssembly`, passes through the `system-prompt/assemble` waterfall, then renders the `system` string, the request's tool list, and the runtime-context snapshot. |
 | `order=-100` built-in identity | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/system-prompt/src/index.ts): `'harness:identity'` | The built-in identity section sits at order -100, the exported `PERSONA_SECTION` at 0, tool guidance in 100-199. Ordering is a single numeric `order` field, not a phase enum. |
-| `{{name}}` strict interpolation | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/system-prompt/src/index.ts) | Strict `{{variable}}` interpolation: an unknown name or an undefined value throws, exactly the mini's refuse-to-ship rule. |
+| `{{name}}` strict interpolation | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/system-prompt/src/index.ts) | Strict `{{variable}}` interpolation: an unknown name or an undefined value throws, exactly Mini-dsh's refuse-to-ship rule. |
 | `latest_snapshot(session)` | [`packages/core/agent-loop/src/runtime-context.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/runtime-context.ts): `RuntimeContextProjection` | The retained snapshot is a projection; the snapshot is emitted as a `user/message` only when it differs from the retained one, never as system text. |
-| assembly inside `_step()` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `preStep` | Assembly happens per step inside `preStep`, before the `agent/pre-step` hook, the same boundary the mini uses (line 230). |
+| assembly inside `_step()` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `preStep` | Assembly happens per step inside `preStep`, before the `agent/pre-step` hook, the same boundary Mini-dsh uses (line 230). |
 | the bridge in `system_prompt_plugin` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `ctx.systemPrompt.tools(...)` | Tools register their schemas as one prompt provider (lines 832-836). The mini folds the bridge into the prompt plugin; real dsh registers it from the tools package's side. |
 | the checks' time context | [`packages/context/time-context/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/context/time-context/src/index.ts) | A whole package family contributes context this way; `agent-instructions` delivers workspace instructions in the same plane. |
 
-What the real system-prompt layer adds on top of this section's
-Mechanism:
+Additional features in the production system-prompt layer:
 
 - **Events around assembly.** `system-prompt/assemble` is a
   scope-filtered waterfall that can rewrite the assembly in flight,
@@ -200,16 +198,16 @@ Mechanism:
   assembles without hooks.
 - **A deterministic tool-order rule.** Real rendering orders the
   request's tool list with an explicit `TOOL_ORDER_REST` constant;
-  the mini relies on registration order.
+  Mini-dsh relies on registration order.
 - **A context plane outside the registry.** Most of
   `packages/context` bypasses `systemPrompt.context()`:
   `agent-instructions`, `time-context`, and `tmux-context` append
   `UserMessage`s from `agent/pre-step` listeners. The registry's own
   `context()` callers are the sandbox policy, the approval policy,
-  and subagent delegation. Real sandbox confinement sits above the
-  Ceiling; the mini's argv-rewrite stub arrives with the capability
+  and subagent delegation. Real sandbox confinement is outside this
+  tutorial's scope; Mini-dsh's argv-rewrite stub arrives with the capability
   seams in section 10.
-- **Sections that can wait.** A real `PromptSection` may declare
+- **sections that can wait.** A real `PromptSection` may declare
   `complete?`, letting assembly proceed while a slow provider fills
   in later. The mini's providers are synchronous.
 
@@ -217,7 +215,7 @@ Mechanism:
 
 ## Failure modes
 
-- **A clock in the system text buys a cache miss per step.**
+- **A clock in the system text invalidates the cache on every step.**
   Providers cache on a stable prompt prefix, and the system text is
   the first thing in it. One timestamp regenerated per step and no
   request ever reuses the prefix. The section/context split keeps
@@ -226,7 +224,7 @@ Mechanism:
   patched into the request without a log row leaves replay unable to
   rebuild what the model saw. The snapshot is a `user/message` row,
   ordinary derived history; even the system text is recorded on
-  `request/header`, so the log stays the whole story.
+  `request/header`, so the log preserves the complete request record.
 - **Re-emitting an unchanged snapshot floods history.** Appending
   the reading every step grows every later request by one row for no
   information. The boundary compares against the last snapshot row
@@ -262,12 +260,12 @@ Mechanism:
   the `prompt` parameter.
 - [`standin.py`](src/standin.py): the seam signature gains
   `system=""`; the Scripted stand-in still never inspects it.
-- [`test.py`](src/test.py): the Offline check proves the three
+- [`test.py`](src/test.py): the offline check proves the three
   artifacts land in one request, the system text stays byte-identical
   while a mid-turn tick re-emits the snapshot, dedupe holds within
   and across turns, an unknown or unset `{{variable}}` stops the step
   before any request ships, and every registration undoes.
-- [`demo.py`](src/demo.py): the Live demo assembles a persona over
+- [`demo.py`](src/demo.py): the live demo assembles a persona over
   the identity built-in, snapshots a real clock and the cwd, and
   lets a slow tool force a mid-turn re-emit on a real model call.
 
@@ -275,8 +273,8 @@ Mechanism:
 python sections/08-system-prompt/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it skips
-politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv

@@ -2,19 +2,19 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Tools, prompts, whole subsystems all get mounted while the harness runs,
-> and all have to come back out. Ask each one to remember its own cleanup
-> and one forgotten line leaks forever, so registering hands over the undo
-> with it.
+> Tools, prompts, and entire subsystems can be mounted and unmounted while
+> the harness runs. If each plugin manages its own cleanup, one missed line
+> can leave a permanent registration behind. Every registration therefore
+> returns the operation that reverses it.
 
 dsh's slogan is "everything is a plugin": tools, session stores, prompt sections, whole
 subsystems mount and unmount at runtime: on profile switches, hot reloads, test teardown,
 subagent shutdown.
 
-The naive way to make that safe is a convention: every plugin writes a `cleanup()` that
+A common way to manage cleanup is a convention: every plugin writes a `cleanup()` that
 unregisters whatever it registered.
 
-Conventions drift. One plugin adds a listener in a new code path, forgets the matching
+That convention is easy to break. A plugin adds a listener in a new code path, forgets the matching
 unregister, and now unloading it leaks a callback that fires against a dead plugin forever.
 
 The kernel flips the ownership. Registering something *is* handing the framework the undo.
@@ -121,15 +121,15 @@ The kernel is Cordis, source-vendored and locally patched under `vendor/`
 | `provide` / `get` | [`vendor/cordis/src/reflect.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/reflect.ts), [`service.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/service.ts) | The `Service` base class self-registers via `ctx.reflect.provide` in its constructor. |
 | `plugin(apply)` | [`vendor/cordis/src/registry.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/cordis/src/registry.ts) | Plugins come in Function / Constructor / Object forms with `inject` declarations; ours is the Function form only. |
 
-What the real kernel adds on top of this section's mechanism:
+Additional features in the production kernel:
 
 - **`inject`-driven reload**: a fiber declares the services it needs; when an injected
   service's provider changes, the fiber reloads automatically (provider-uid epochs in
   `fiber.ts`). Reversibility is what makes that cascade safe: reload is just
   dispose-then-mount.
-- **HMR as the same code path**: hot module replacement (`vendor/hmr/`) is dispose + re-mount
-  of the changed plugin's fiber. Excluded from the mini-dsh (Ceiling): it is file-watching
-  plumbing over the mechanism this section already built.
+- **HMR through the same code path**: hot module replacement (`vendor/hmr/`) disposes and remounts
+  the changed plugin's fiber. File watching is outside this tutorial's scope; it builds on
+  the mechanism this section already implements.
 - Config-driven mounting: [`vendor/loader/src/config/entry.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/loader/src/config/entry.ts)
   turns a config row into a mount/unmount; section 13's composition layer stands on it.
 
@@ -142,7 +142,7 @@ What the real kernel adds on top of this section's mechanism:
   unmount, and the framework cannot even see it. The discipline is total or it is nothing:
   *every* side effect goes through `effect()`.
 - **A throwing disposer halts the unwind.** One bad undo aborts the rest of the fiber's
-  cleanup. The mini-dsh accepts this to stay small; real Cordis isolates disposer errors so
+  cleanup. The Mini-dsh accepts this to stay small; real Cordis isolates disposer errors so
   one plugin's bug cannot wedge another's teardown.
 - **Undo depends on already-undone state.** Reverse order protects dependents within one
   fiber, but nothing orders *across* fibers here. Real dsh layers `inject` on top so
@@ -152,7 +152,7 @@ What the real kernel adds on top of this section's mechanism:
   `InactiveEffectError` instead of accepting the registration.
 - **Holding a service reference across unmount.** `ctx.get("echo")` returns a live object;
   a caller that caches it keeps it working after its provider is gone. Real dsh's proxies
-  and `inject` gating narrow this window; the mini-dsh just tells you the rule: resolve at
+  and `inject` gating narrow this window; Mini-dsh just tells you the rule: resolve at
   use time, never cache.
 
 ---

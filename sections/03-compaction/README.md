@@ -17,7 +17,7 @@ all of it.
 So: if the log is append-only, how does compaction remove anything the model
 sees?
 
-Section 02 already built the way out. The model never sees the log; it sees
+Section 02 already provides the solution. The model never sees the log; it sees
 messages derived from the surface, which is nothing more than the list of
 which rows count as messages.
 
@@ -124,10 +124,10 @@ Two details carry the weight:
 
 - **Validate, then commit.** `_surface_after()` runs before `self.log.append`.
   A rejected op raises out of `append()` with the log and the surface exactly
-  as they were: no ghost row whose recorded op never happened.
+  as they were, with no stale row recording an operation that never happened.
 - **The op is on the record.** Because each event carries its surface op, the
   surface is a pure function of the log: replay every logged append and you
-  rebuild it exactly. The Offline check proves this by rebuilding a second
+  rebuild it exactly. The offline check proves this by rebuilding a second
   `Session` from the first one's rows.
 
 One quirk is worth staring at: after a compaction, the surface is no longer
@@ -142,15 +142,14 @@ why `_surface_after()` rejects a seq range whose covered entries have a hole.
 Compared with section 02:
 
 - `kernel.py`, `message.py`, and `standin.py` are carried forward verbatim;
-  `session_log.py` is the only changed source file, so the diff against 02 is
-  this section's Mechanism, nothing else.
+  `session_log.py` is the only changed source file, so the diff against 02 contains only the mechanism introduced here.
 - `append()` gains the `surface_op` argument, records the op on the frozen
   event, and commits only after the new `_surface_after()` validates the
   transition.
 - The surface types are still exactly three. A compaction summary is a plain
   `user/message`; the op, not a new event type, does the replacing.
 - There is no `compaction.py`. Compaction is one `append()` call, so the
-  Mechanism lives where the surface lives.
+  mechanism lives where the surface lives.
 
 ---
 
@@ -165,10 +164,10 @@ The surface and its ops live in
 | --- | --- | --- |
 | `surface_op` argument: `"append"` or `{"op": "replace", "start", "end"}` | [`packages/core/session/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/types.ts): `SurfaceOp` | `SurfaceOp = 'append' \| { op: 'replace', start, end }`, the exact two-arm shape this section rebuilds. |
 | validate-then-commit in `append()` | [`packages/core/session/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts): `class Session` | `append()` validates (`snapshotJsonValue`), deep-freezes, validates the surface transition, then pushes; compaction rewrites the surface via a `replace` marker without mutating the log. |
-| `_surface_after()` maintaining the surface | [`packages/core/session/src/surface.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/surface.ts): `SurfaceManager` | The real surface is a managed object with its own module; the mini folds it into two methods on `Session`. |
+| `_surface_after()` maintaining the surface | [`packages/core/session/src/surface.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/surface.ts): `SurfaceManager` | The real surface is a managed object with its own module; Mini-dsh folds it into two methods on `Session`. |
 | summary as a plain `user/message` | [`packages/core/session/src/known-event-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/known-event-types.ts): `compaction/*` | Real dsh gives compaction its own event types, added to `SessionEventMap` by declaration merging; they appear among the 45 in-repo event types. |
 
-What the real session log adds on top of this section's Mechanism:
+Additional features in the production session log:
 
 - **Compaction as a plugin with its own vocabulary.** The core session package
   ships no `compaction/*` types; plugins add them by declaration merging, and
@@ -178,13 +177,13 @@ What the real session log adds on top of this section's Mechanism:
   the summary, so the op stays the whole diff.
 - **Someone to write the summary.** This section treats the summary text as
   caller-provided data; the replace op works the same whoever wrote it.
-  Producing a summary with the model needs a request loop, and mini-dsh gets
+  Producing a summary with the model needs a request loop, and Mini-dsh gets
   one in section 04.
 - **A projection that is not this projection.**
   [`packages/session/session-projection`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-projection)
   folds committed events into client-facing UI read models, untouched by
   surface replaces. It is unrelated to `deriveMessages()`, and the UI itself
-  sits above the Ceiling: pointed at, not rebuilt.
+  is outside this tutorial's scope, so it is linked here but not rebuilt.
 
 ---
 
@@ -194,7 +193,7 @@ What the real session log adds on top of this section's Mechanism:
   and leaves seq 4 visible. Off by one and the summary sits next to a message
   it claims to have replaced. The check pins the edge: `[4, 4)` covers nothing
   and is rejected.
-- **A replace that covers nothing would tell the story twice.** If an empty
+- **An empty replacement would duplicate history.** If an empty
   cover committed, the summary would join the surface while everything it
   summarizes stayed visible. `_surface_after()` rejects it instead.
 - **Surface order is not seq order after the first compaction.** With surface
@@ -237,7 +236,7 @@ What the real session log adds on top of this section's Mechanism:
 python sections/03-compaction/src/test.py   # offline checks, no key
 ```
 
-The Mechanism never touches the Model seam: the summary is caller-provided
+The mechanism never touches the Model seam: the summary is caller-provided
 data. The check drives the Scripted stand-in only to stream a realistic
 conversation into the log before compacting it; there is no `demo.py` until
 the loop exists (section 04).

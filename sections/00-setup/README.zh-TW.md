@@ -1,43 +1,43 @@
-<!-- source: README.md @ 5566322 -->
+<!-- source: README.md @ 3705bd7 -->
 
 # 00 · Setup
 
 [English](README.md) | 繁體中文 | [简体中文](README.zh-CN.md)
 
-> harness 裡到處都要問 model。要是每個地方都各自呼叫某一家 provider 的 SDK，它的格式就會跟著跑進 prompt、跑進 log、跑進 loop。所以核心只認一套自己的訊息格式，provider 收在一個隨時換得掉的呼叫後面。
+> harness 裡許多地方都需要呼叫模型。如果每個模組都直接依賴某家 provider 的 SDK，它的格式就會擴散到 prompt、log 和 loop 中。因此，核心只使用統一的訊息格式，並把 provider 藏在可替換的模型介面後面。
 
-DeepSeek Harness（dsh）是一套 agent harness：一個大型的 TypeScript 程式碼庫，裡面的 tool、prompt，甚至一整個子系統，都是 plugin，掛在一個正在跑的 kernel 上。這份 tutorial 只用 Python 標準函式庫，把它縮成一個最小版本，一個 Section 只加一個 Mechanism。
+DeepSeek Harness（dsh）是一套大型 TypeScript agent harness。工具、prompt，甚至完整的子系統，都以 plugin 形式掛載在執行中的 kernel 上。本教學只使用 Python 標準函式庫實作最小版本，每章專注加入一項機制。
 
-這些 Mechanism 全都繞著同一件事轉：問 model，然後等它回話。歷史要整理成 model 讀得下去的樣子，tool 要等 model 開口才會被叫起來，prompt 要先組好才餵得進去。
+後續所有機制都建立在同一個基礎上：把請求送給模型，再接收回覆。對話歷史要轉成模型能理解的格式，工具要等模型發出呼叫後才執行，prompt 也必須在請求送出前組裝完成。
 
-所以 mini-dsh 也得有一套「怎麼問」的辦法。最直覺的做法，是 import 某一家 provider 的 SDK，哪裡要問就在哪裡呼叫它。
+Mini-dsh 因此需要一個統一的模型呼叫方式。最簡單的做法，是在每個需要模型的地方直接 import 某家 provider 的 SDK。
 
-這麼做，等於讓那一家 provider 滲進整套 harness 的每個角落。組 prompt 的程式碼會照著它的請求格式寫，log 裡存的是它回傳的物件，compaction 認得的是它那套 role 名稱；哪天想換一家，這三個地方都得跟著改。
+問題是，provider 的格式會因此滲入整套 harness。prompt 組裝程式會依賴它的請求格式，log 會儲存它回傳的物件，compaction 也會綁定它的 role 命名。未來一旦更換 provider，這些模組都必須一起修改。
 
-而且 model 不會一次把話講完。它是一邊想一邊把字吐出來，所以呼叫端要是非等到整段講完不可，等的這段時間就什麼都端不出去，log 也要拖到最後才有東西可以記。
+另一個重點是串流。模型通常會逐段產生回覆。如果呼叫端一定要等到全部完成才能回傳，使用者就只能空等，log 也無法即時記錄中間過程。
 
-所以：為什麼 mini-dsh 的核心只認自己那套 Message 格式，而且一定要隔著一個隨時換得掉的 Model seam 才去問 model？
+因此，本章要回答的問題是：為什麼 Mini-dsh 的核心只認自己的 `Message` 格式，並透過可替換的 Model seam 呼叫模型？
 
-因為這套 harness 真正要講的，是 model 呼叫外面那一圈東西，而那一圈東西都不該管回答的是誰家的 model。不管後面換成誰，送進去的都是同一套 Message，收回來的也是同一套 Message，provider 就變成一個隨時拔得下來的零件。要做到這件事，Section 00 得先：
+這套 harness 關心的是模型呼叫周邊的機制，不應依賴背後究竟是哪家模型。無論更換哪個 provider，核心收發的都是同一種 `Message`，provider 因此成為可以獨立替換的元件。本章會先建立：
 
-1. 給 mini-dsh 一套自己的 **Message 格式**，跟真正的 dsh 一樣不綁任何 provider，任何一家的傳輸格式都別想滲進核心。
-2. 把 **Model seam** 定下來：它就是一個普通的 callable，收下一串訊息，先一塊一塊吐出 chunk 事件，最後用一則訊息收尾，不多不少就一則。
-3. 附上一支 **Scripted stand-in**，照著這套約定講話，讓這個 seam 一出現就有一個真的跑得動的實作。
-4. 每一則回應都照同一套規則切成 chunk，所以從第一天起，這裡的串流就是真的。
+1. Mini-dsh 自己的 **`Message` 格式**，不與任何 provider 綁定。
+2. **Model seam** 的呼叫規範：一個普通 callable，接收一組訊息，先產生多個 chunk 事件，最後再產生一則完整訊息。
+3. 可直接執行的 **Scripted stand-in**，用預先設定的回覆實作這套規範。
+4. 穩定、可測試的分塊規則，讓串流從一開始就是真正的執行模式，而不是事後模擬。
 
-有了這個 seam，這份 tutorial 要怎麼檢查自己也就跟著定了。stand-in 手上是一條排好順序的佇列，裡面全是寫死的回應，它從來不看送進來的請求，所以每個 Section 的檢查都能離線跑，不用 key，每次跑出來的東西一模一樣。
+這個 seam 也奠定了整份教學的測試方式。stand-in 內部只有一列預先排好的回覆，完全不讀取請求內容。因此，後續每章的測試都能在離線環境中執行，不需 API key，結果也可重現。
 
 ---
 
-## Mechanism
+## 核心機制
 
-三個零件，一個檔案放一個：
+本章包含三個核心元件，各自放在獨立檔案中：
 
-- **`Message`**（`message.py`）：跟 model 一來一往的每一則訊息都長這樣，一個凍結的 dataclass，只有 `role` 和 `content` 兩個欄位。
-- **Model seam**：它不是一個類別，而是一套呼叫慣例。`model(messages)` 先 yield 出 `("chunk", str)` 事件，最後 yield 一個 `("message", Message)`。
-- **`ScriptedModel`**（`standin.py`）：seam 的第一個實作，一條佇列，裡面裝著寫死的回應。
+- **`Message`**（`message.py`）：用於模型交互的統一訊息格式。它是一個凍結的 dataclass，只包含 `role` 和 `content`。
+- **Model seam**：一套呼叫約定，而不是基底類別。`model(messages)` 會先 yield `("chunk", str)`，最後再 yield `("message", Message)`。
+- **`ScriptedModel`**（`standin.py`）：Model seam 的第一個實作，按順序回傳預先設定的回覆。
 
-這套 harness 的詞彙，全部就是這個 Message：
+整套 harness 都使用同一種 `Message` 格式：
 
 ```python
 @dataclass(frozen=True)
@@ -46,11 +46,11 @@ class Message:
     content: str
 ```
 
-這個 dataclass 是凍結的，因為一則訊息記的是已經說出口的話，無法更改。它也不綁任何 provider，因為核心不該管回答的是誰家的 model；要把它翻成某一家的傳輸格式，那是 adapter 的事，而核心裡面一個 adapter 也沒有。
+這個 dataclass 設為不可變，因為訊息一旦寫入歷史，就不應再被事後修改。它也不綁定任何 provider：核心只處理自己的訊息格式，至於如何轉成特定服務的請求格式，則由 adapter 負責。
 
-三種 role 就把 harness 裡所有的來回都包完了：使用者說了什麼、model 說了什麼、tool 回了什麼。後面的 Section 會在這些訊息外面加事件型別，而不是往訊息裡面加欄位。
+三種 role 已足以描述 harness 內的所有互動：使用者輸入、模型回覆，以及工具結果。後續章節會在訊息外層加入事件型別，而不是不斷擴充訊息本身的欄位。
 
-seam 本身就是一套呼叫慣例。任何一個 callable，只要收下一串訊息、再 yield 出這兩種事件，它就算是一個 model；所以 adapter 可以是一個函式，可以是一個閉包，也可以像 stand-in 那樣是一個物件：
+Model seam 本身只是一套呼叫約定。任何 callable 只要接收一組訊息，並 yield 出這兩種事件，就能當作模型使用。因此，adapter 可以是函式、閉包，也可以像 stand-in 一樣實作成物件：
 
 ```python
 class ScriptedModel:
@@ -65,9 +65,9 @@ class ScriptedModel:
         yield ("message", Message(role="assistant", content=text))
 ```
 
-`messages` 傳進來了，卻從來沒被讀過。不管你問什麼，stand-in 都照著腳本、照著順序回答，而整份腳本就攤在寫它的那個檢查裡：第一則回應永遠對應第一次呼叫。
+`ScriptedModel` 不會讀取傳入的 `messages`。無論輸入是什麼，它都按照測試中預先排好的順序回覆，因此第一次呼叫一定取得第一則回覆，測試結果也能穩定重現。
 
-每一則回應在送出收尾那則訊息之前，會先切成幾塊一樣大的 chunk 送出去：
+每則回覆在送出最終訊息前，會先切成大小相近的 chunk 逐段產生：
 
 ```python
 def _chunks(text, n=3):
@@ -90,65 +90,65 @@ check                                  ScriptedModel(["Hello, reader."])
   │◄──────────────────────────────────
 ```
 
-這兩個階段比 stand-in 本身重要得多。chunk 是當場流過去的那一段；最後那則 `Message` 才是留得住的紀錄，而且它每次都會把完整的文字再講一遍。到了 Section 02，log 會把這兩種東西存成不同的事件型別；到了 Section 04，loop 會把兩種都往下傳，中間不做任何緩衝。
+真正重要的是這兩個階段。chunk 用於即時串流，最後的 `Message` 則保留完整內容，供後續寫入紀錄。第 02 章會將兩者記成不同的事件型別；第 04 章的 loop 則會原樣轉送，不額外緩衝。
 
 ### 改了什麼
 
-Section 00 前面沒有東西，所以這一格記的是後面每個 Section 都會繼承的起點：
+第 00 章是整條 Carry-forward 鏈的起點，後續每一章都會沿用以下內容：
 
-- `src/` 從這裡開始：`message.py` 和 `standin.py` 是原始碼，`test.py` 是檢查。
-- Carry-forward 這條規則從這裡開始。Section 01 會把這份 `src/` 原封不動抄過去，只加上它的 kernel，所以相鄰兩個 Section 的 diff 剛好就是一個 Mechanism，多的沒有。
-- 這裡的東西還不知道 plugin、log 或 agent 是什麼。seam 現在只是一套呼叫慣例，等著有人來呼叫它。
+- `src/` 從本章開始累積：`message.py` 和 `standin.py` 是實作，`test.py` 是離線測試。
+- 第 01 章會完整沿用這份 `src/`，只加入 kernel。之後也維持相同方式，讓相鄰章節的 diff 聚焦在新機制上。
+- 目前還沒有 plugin、log 或 agent。Model seam 現階段只定義呼叫方式，後續章節才會加入實際呼叫它的元件。
 
 ---
 
-## In real dsh
+## 對照真正的 dsh
 
-所有指過去的連結都固定在 Studied version [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) 上。Model seam 在真正的 dsh 裡的位置是 [`packages/llm`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm)。
+以下連結皆指向研究版本 [`99f6f02`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca)。Model seam 在真正的 dsh 裡的位置是 [`packages/llm`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm)。
 
 | Mini-dsh | 真正的 dsh | 說明 |
 | --- | --- | --- |
-| `Message` | [`packages/llm/llm/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/types.ts) | 詞彙型別歸 llm seam 管，跟我們一樣不綁 provider；`ToolSchema`（第 333 行）也在這個檔案裡，後面 tool 就是靠它向 model 自我介紹的。Mini-dsh 的整套詞彙只有一個 dataclass。 |
-| Model seam 的約定 | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts)：`LlmAdapter`（第 180 行） | 那邊的 seam 一樣是串流：`stream(options)` 回傳一個 `AsyncIterable<StreamChunk>`。mini 這邊「先 chunk、最後一則訊息」的慣例是同一個想法，只是把最後那則訊息講明白了。 |
+| `Message` | [`packages/llm/llm/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/types.ts) | 訊息型別由 llm seam 定義，同樣不綁定 provider。`ToolSchema`（第 333 行）也在這個檔案中，工具之後會透過它向模型描述自己。Mini-dsh 則只需要一個 dataclass。 |
+| Model seam 的約定 | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts)：`LlmAdapter`（第 180 行） | 真正的 seam 同樣採用串流：`stream(options)` 會回傳 `AsyncIterable<StreamChunk>`。Mini-dsh 使用「先產生 chunk，最後產生完整訊息」的簡化版本。 |
 | 擺在 seam 後面的 `ScriptedModel` | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts)：`LlmRuntime`、`ctx.llm`（第 284 行） | adapter 透過 `ctx.llm.registerAdapter(providers, adapter)` 註冊，換掉的時候呼叫端不會察覺。stand-in 就是 mini-dsh 的第一個 adapter。 |
-| 呼叫 `model(messages)` 的檢查 | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | 真正用它的是 loop：先 `ctx.llm.prepareCall()`，再 `preparedCall.stream(request)`（第 345、449 行）。Section 04 會讓 mini 也有同一個呼叫端。 |
-| 先一串 chunk，最後一則訊息 | [`packages/core/session/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/types.ts)（第 236 行） | 等到 log 出現（Section 02），串流的這兩個階段就變成 session 事件型別 `assistant/chunk` 和 `assistant/message`。 |
+| 呼叫 `model(messages)` 的檢查 | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | 真正用它的是 loop：先 `ctx.llm.prepareCall()`，再 `preparedCall.stream(request)`（第 345、449 行）。第 04 章會讓 mini 也有同一個呼叫端。 |
+| 先一串 chunk，最後一則訊息 | [`packages/core/session/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/types.ts)（第 236 行） | 等到 log 出現（第 02 章），串流的這兩個階段就變成 session 事件型別 `assistant/chunk` 和 `assistant/message`。 |
 
-真正的 llm seam 在這個 Section 的 Mechanism 之上，還多做了這些：
+真正的 llm seam 還提供以下功能：
 
-- **一個會做路由的 adapter registry。** `ctx.llm` 同時放著好幾個 adapter，用 provider 名字當鍵；至於某一套部署要拿哪個 model 當預設，本身又是一個 plugin（[`packages/core/agent-default-model`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-default-model)，`ctx.agentDefaultModel`）。mini 這邊一次只有一個 callable，要到 Section 10 才會給 seam 一個 service 的位置。
+- **一個會做路由的 adapter registry。** `ctx.llm` 同時放著好幾個 adapter，用 provider 名字當鍵；至於某一套部署要拿哪個 model 當預設，本身又是一個 plugin（[`packages/core/agent-default-model`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-default-model)，`ctx.agentDefaultModel`）。mini 這邊一次只有一個 callable，要到第 10 章才會給 seam 一個 service 的位置。
 - **串流上可以掛 middleware。** 一道 `llm/stream` waterfall（`index.ts` 第 51 到 60 行）讓 plugin 可以包住或旁觀每一次 model 呼叫，而重試會以 `llm/retry` 這種 session 事件出現在 log 裡。
-- **真的照著各家協定講話的 adapter。** 內建的 provider [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 和 [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts) 直接照各家自己的協定講話。Ceiling：mini-dsh 不會做這種 adapter；它唯一碰到真 API 的程式碼，是 Live demo 在 `demo.py` 裡那段大約 20 行、把訊息翻成 Anthropic 格式的東西（Section 04 以後），而且它待在離線核心外面。
-- **折成一份，而不是拆成三份。** 真正的 dsh 通常會把一個能力拆成三邊：一個套件定義介面，一些套件提供它，一些套件使用它。llm seam 把定義端和使用端折進同一個套件，因為使用它的就是 agent loop 本身，不是一組隨時可以換掉的 tool。Section 10 會把這個 seam 和這條折疊規則一起重現一遍。
+- **連接不同 provider 的 adapter。** 內建的 [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) 和 [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts) 會處理各家服務的協定。本教學不實作完整 adapter；唯一接觸實際 API 的地方，是第 04 章之後 `demo.py` 中約 20 行的 Anthropic 格式轉換，而且與離線核心分開。
+- **折成一份，而不是拆成三份。** 真正的 dsh 通常會把一個能力拆成三邊：一個套件定義介面，一些套件提供它，一些套件使用它。llm seam 把定義端和使用端折進同一個套件，因為使用它的就是 agent loop 本身，不是一組隨時可以換掉的 tool。第 10 章會把這個 seam 和這條折疊規則一起重現一遍。
 
 ---
 
-## Failure modes
+## 常見失敗模式
 
-- **某一家 provider 的格式會一路蔓延出去。** provider 回什麼就存什麼，log 裡躺的就是它那份 JSON，compaction 認得的是它那套 role 名稱，組 prompt 的程式碼是照著它的請求格式寫的。換一家，就得三個地方一起動刀。核心只認一套 Message 格式，翻譯這件事就被關在 adapter 裡面，哪裡都跑不掉。
-- **訊息改得動，歷史就會被人偷偷改掉。** Section 02 和 03 把記下來的訊息當成已經發生的事實，而 compaction 想縮掉 model 看到的東西，也只能走 log 這條路。要是一則訊息的欄位隨手就能重新指派，這兩件事都會落空：紀錄和 model 眼前看到的會愈差愈遠，而且改過的痕跡一點都不留。
-- **seam 只回一整段寫完的文字，串流就沒了。** model 還在寫的時候，呼叫端沒有東西可以先端出去，Section 02 也沒有 chunk 事件可以記，回答一長，看起來就像整個卡住。有了 chunk，第一批字一出來，harness 手上就有東西可以往下傳。
-- **只丟 chunk、不丟收尾那則訊息，拼回原文的工作就落到每一個呼叫端頭上。** loop 自己接一份，log 自己接一份，旁邊盯著看的程式碼也各接各的，而每一份都可能在接縫上悄悄接錯。最後那一個 `("message", Message)`，讓這份留得住的紀錄只在 seam 這裡拼一次。
-- **把 seam 定成一個基底類別，等於把整套 harness 拖進每一個 adapter 裡。** 要繼承，provider 就得連 harness 那個類別先假設好的東西一起吃下去；而一個普通的函式，或是一個包住另一個 model 的閉包，都會被擋在門外。改成一套呼叫慣例，要求就只停在「會 yield 出這兩種事件」，換一個 model 也就是傳一個不一樣的 callable 進去而已。
+- **provider 格式滲入核心。** 如果直接儲存 provider 回傳的 JSON，log、compaction 和 prompt 組裝都會依賴它的欄位與 role 命名。更換 provider 時，這些模組就得一起修改。統一使用 `Message`，可以把格式轉換集中在 adapter 中。
+- **可修改的訊息會讓歷史失真。** 第 02、03 章把已寫入的訊息視為既成事實；如果欄位還能任意修改，紀錄與模型實際看到的內容可能逐漸分歧，而且沒有修改痕跡。
+- **只回傳完整文字，就無法真正串流。** 模型產生回覆時，呼叫端沒有任何內容可以先顯示，log 也無法記錄 chunk。回覆越長，使用者等待的空窗就越明顯。
+- **只有 chunk，會迫使每個呼叫端自行重組完整內容。** loop、log 和監看程式都要各自拼接一次，也可能得到不一致的結果。最後的 `("message", Message)` 讓完整訊息只需在 seam 中組裝一次。
+- **用基底類別定義 seam，會增加不必要的耦合。** adapter 必須繼承 harness 的類別，普通函式或包裝另一個模型的閉包也難以直接使用。改用呼叫約定後，只要能 yield 指定事件的 callable 都能成為模型實作。
 
 ---
 
-## 跑跑看
+## 動手驗證
 
 [`src/`](src/) 是 Carry-forward 這條鏈的起點，每個檔案都是新的：
 
 - [`message.py`](src/message.py)：凍結的 `Message` dataclass。
-- [`standin.py`](src/standin.py)：`ScriptedModel`，還有它那個每次切法都一樣的切塊函式。
-- [`test.py`](src/test.py)：證明 seam 的約定站得住腳：所有 chunk 接起來剛好等於最後那則訊息的內容，串流不是只吐一整塊，佇列也照順序回答。
+- [`standin.py`](src/standin.py)：`ScriptedModel` 與固定規則的分塊函式。
+- [`test.py`](src/test.py)：確認所有 chunk 拼接後等於最終訊息、串流確實包含多個區塊，而且預設回覆會依序取用。
 
 ```bash
 python sections/00-setup/src/test.py   # offline check, no key
 ```
 
-Model seam 在這裡已經有了，但還沒有哪個 Mechanism 在驅動它，所以沒有 `demo.py`。第一支 Live demo 要等 Section 04 的 agent loop 才會出現。
+本章已建立 Model seam，但還沒有機制會主動呼叫它，因此不提供 `demo.py`。第一個實機示範會在第 04 章加入 agent loop 後出現。
 
 ---
 
-## 出處
+## 參考資料
 
-- [learn-agent-memory](https://github.com/hardness1020/learn-agent-memory)：這個 Section 的檢查慣例（離線、不用 key、每次結果都一樣）就是從這個 tutorial 系列沿用過來的。
+- [learn-agent-memory](https://github.com/hardness1020/learn-agent-memory)：本章的檢查慣例（離線、不用 key、每次結果都一樣）就是從這個 tutorial 系列沿用過來的。

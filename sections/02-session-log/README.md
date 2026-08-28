@@ -13,9 +13,9 @@ The same turn gets read three different ways. The model wants clean history,
 saving to disk wants every row, and compaction wants to shrink what the model
 sees without losing the record.
 
-The naive way is one shared `messages` list, appended as the turn runs.
+A common implementation uses one shared `messages` list and appends to it as the turn runs.
 
-One list can only serve one consumer. Streamed chunks either pollute it or vanish,
+A single list cannot satisfy all three use cases. Streamed chunks either pollute it or vanish,
 compaction must destructively edit it, and after a crash you hold whatever the list
 happened to contain, with no way to reconstruct how it got there.
 
@@ -93,7 +93,7 @@ append(event_type, payload) ──► validate + copy ──► freeze ──►
 derive_messages() ──► for seq in surface ──► log[seq] ──► Message(role, content)
 ```
 
-Notice what the split buys. An `assistant/chunk` is a real logged event, so streaming
+This separation has an important benefit. An `assistant/chunk` is a real logged event, so streaming
 is replayable, yet it never reaches the model: it is not a surface type.
 
 And because the model's view is the surface, not the log, section 03 can shrink that
@@ -103,8 +103,7 @@ view by changing the surface while the log keeps every row.
 
 Compared with section 01:
 
-- `message.py`, `standin.py`, and `kernel.py` are carried forward verbatim; the diff
-  against 01 is this section's mechanism, nothing else.
+- `message.py`, `standin.py`, and `kernel.py` are carried forward verbatim; the diff against 01 contains only the mechanism introduced here.
 - New `session_log.py`: `Session` (log, surface, `append`, `derive_messages`),
   `SessionStore`, and `session_log_plugin`.
 - The session log is the first real service mounted on 01's kernel: `provide("sessions")`
@@ -127,7 +126,7 @@ The session log lives in
 | `SessionStore`, `ctx.get("sessions")` | [`packages/core/session/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts): `class SessionStore extends Service` | Ctx key `ctx.sessions`; session creation emits `session/created`, vetoable by throw. |
 | `emit("session/event", ...)` | `session/event` bus event in `index.ts` | The post-commit append feed. The real store also emits `session/disposed` and `session/flush`, an awaited durability barrier. |
 
-What the real session log adds on top of this section's mechanism:
+Additional features in the production session log:
 
 - **A durability barrier.** `session/flush` is a parallel, *awaited* bus event:
   persistence finishes writing before dsh moves on. Our kernel's `emit` is
@@ -141,11 +140,11 @@ What the real session log adds on top of this section's mechanism:
   [JSONL](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence-jsonl)
   and
   [SQLite](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-persistence-sqlite)
-  backends. Ceiling: non-JSONL persistence backends are pointed at, not rebuilt.
+  backends. This tutorial links to the additional persistence backends but does not rebuild them.
 - **A projection that is not this projection.**
   [`packages/session/session-projection`](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/session/session-projection)
   (`ctx.sessionProjections`) folds committed events into client-facing UI read models.
-  It is unrelated to `deriveMessages()`, and the UI itself sits above the Ceiling.
+  It is unrelated to `deriveMessages()`, and the UI is outside this tutorial's scope.
 - **Surface rewriting.** The `replace` arm of `SurfaceOp` lets compaction shrink the
   model's view while the log stays append-only
   ([`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/index.ts)):
@@ -163,7 +162,7 @@ What the real session log adds on top of this section's mechanism:
   so one bad listener raises through `append()`. Real dsh's persistence coordinator
   contains per-listener exceptions so one backend cannot wedge the log.
 - **Validate-and-copy is JSON-shaped, not meaning-shaped.** The `json` round trip
-  quietly turns tuples into lists and accepts `NaN`; a payload that survives it is
+  silently turns tuples into lists and accepts `NaN`; a payload that survives it is
   guaranteed to be plain data, not to be the payload you meant.
 - **Seq references make in-place pruning impossible, on purpose.** The surface, the
   feed, and any persisted row all point at seqs. Deleting or reordering log rows would

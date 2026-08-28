@@ -2,9 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A driver has to take the input, ask the model, and write the answer down.
-> Remembering the conversation would make a second copy of the truth, so
-> this driver remembers nothing.
+> A driver takes input, calls the model, and records the response. Keeping a
+> separate in-memory conversation would create a second source of truth, so
+> the driver derives history from the log instead.
 
 Sections 00 to 03 built a session log that can derive model history, stream
 chunks, and compact. But nothing drives it. Every check so far hand-cranked
@@ -12,9 +12,9 @@ the conversation, appending each message itself.
 
 What is missing is the machine: take the user's text, call the model, record
 the response, repeat until the work is done. That machine is the agent loop,
-and mini-dsh calls one run of it a **turn**, made of one or more **steps**.
+and Mini-dsh calls one run of it a **turn**, made of one or more **steps**.
 
-The obvious way to build it keeps a live message list in memory. Append the
+A common implementation keeps a live message list in memory. Append the
 user's text, append the reply, hand the list to the model each time. No
 deriving, no projection, just a Python list that grows.
 
@@ -33,7 +33,7 @@ on that instead of competing with it. For that to hold, the loop must:
    then stream one model call through the Model seam and append every chunk
    and the final message back.
 3. Record turn and step boundaries as log events (`turn/start`, `step/start`,
-   `step/end`, `turn/end`), log-only, so the log alone tells the whole story.
+   `step/end`, `turn/end`), log-only, so the log contains the complete execution record.
 4. Record a `request/header` row per step saying what was sent, so the log
    can prove what the model was shown.
 5. Keep nothing durable on the Agent object: any Agent over the same log
@@ -116,7 +116,7 @@ Every row is one `append()` on the section 02 session. The markers and the
 header are log-only (`surface_op` is `None`), so the model never sees them;
 `derive_messages()` still returns only real messages.
 
-Because the step rereads the log, the other Mechanisms compose for free.
+Because the step rereads the log, the other mechanisms compose for free.
 Compact between turns (section 03) and the next `request/header` records a
 smaller number: the step derived the summary view, because that is what the
 log projects now. Nothing told the loop about the compaction. Nothing had to.
@@ -124,7 +124,7 @@ log projects now. Nothing told the loop about the compaction. Nothing had to.
 The same move pays off when things go wrong. A model call that dies mid-step
 leaves `step/start`, a `request/header`, and some orphan chunks, then nothing.
 No repair step is needed: chunks are log-only, so the next derivation is
-already clean, and the Offline check kills a model mid-stream to prove it.
+already clean, and the offline check kills a model mid-stream to prove it.
 
 And it pays off at resume. The Agent carries a session, a Model seam
 callable, and a `status` flag that only means "mid-turn right now". Replay
@@ -140,14 +140,13 @@ just the derived messages until section 08 builds the system prompt.
 Compared with section 03:
 
 - `kernel.py`, `message.py`, `session_log.py`, and `standin.py` are carried
-  forward verbatim; `agent_loop.py` is the only new source file, so the diff
-  against 03 is this section's Mechanism, nothing else.
+  forward verbatim; `agent_loop.py` is the only new source file, so the diff against 03 contains only the mechanism introduced here.
 - The hand-cranked `stream_turn()` helper from 03's check is gone. The loop
   is now real code under test, and the check drives it through `send()`.
 - The while-step loop runs exactly once per turn today, because with no tools
   every step ends `"completed"`. The loop shape and the end reason are the
   socket section 05 plugs into.
-- This is the first model-touching Section, so `demo.py` appears: the same
+- This is the first section that can call a live model, so it adds `demo.py`: the same
   loop, with the real Anthropic API plugged into the Model seam.
 
 ---
@@ -167,9 +166,9 @@ behind the registry in
 | `AgentRegistry`, the `agents` service | [`packages/core/agent/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/index.ts): `AgentRegistry` | `ctx.agents` holds opaque `Agent` handles; a swappable factory (`setFactory()`), registered by `dsh-agent-loop`, builds the concrete driver. |
 | `status`: `"idle"` or `"running"` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `AgentStatus` | The same two states, on a much wider `Agent` seam interface (`cancel`, `send`, `followup`, `steer`, `inject`). |
 | `turn/start`, `step/start`, `step/end`, `turn/end`, `request/header` rows | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | The durable turn/step vocabulary is session events appended by the driver, exactly as here; the `agent/*` bus carries only lifecycle, inbox, and interception points. |
-| the Model seam call in `_step()` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `ctx.llm.prepareCall()` | Real requests go through the llm capability seam and stream back chunk by chunk; the seam itself is section 10's Mechanism. |
+| the Model seam call in `_step()` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `ctx.llm.prepareCall()` | Real requests go through the llm capability seam and stream back chunk by chunk; the seam itself is section 10's mechanism. |
 
-What the real agent loop adds on top of this section's Mechanism:
+Additional features in the production agent loop:
 
 - **A much richer step.** Before streaming, a real step claims the inbox,
   assembles the system prompt, projects runtime context, and runs the
@@ -185,15 +184,15 @@ What the real agent loop adds on top of this section's Mechanism:
   be replaced without touching anything that holds an agent handle.
 - **Lifecycle on the bus.** `agent/created`, `agent/disposed`,
   `agent/status`, and the inbox events let live observers follow along, and a
-  cancellation token threads through everything. The mini's durable markers
-  carry the story; cancellation arrives with the scheduler in section 06.
+  cancellation token threads through everything. Mini-dsh's durable markers
+  preserve the execution record; cancellation arrives with the scheduler in section 06.
 
 ---
 
 ## Failure modes
 
 - **A cached message list is a second copy of the truth.** Hold history in a
-  live list and every other Mechanism becomes a sync problem: compaction
+  live list and every other mechanism becomes a sync problem: compaction
   edits the surface behind it, replay rebuilds sessions without it. Deriving
   from the log each step means there is nothing to keep in sync, ever.
 - **A crash mid-step needs no repair.** A step that dies leaves `step/start`
@@ -208,14 +207,14 @@ What the real agent loop adds on top of this section's Mechanism:
   pins what each step sent into the log itself. The check compacts between
   turns and reads the counts straight off the log: 1, then 3, then 2 after
   compaction. No stand-in internals, just the record.
-- **Two turns on one log would interleave the story.** A `send()` during a
+- **Two turns on one log would interleave their events.** A `send()` during a
   running turn raises instead of weaving two sets of turn/step markers into
   one sequence. Real dsh queues that message in the inbox and claims it at a
-  step boundary; that is section 07's Mechanism.
+  step boundary; that is section 07's mechanism.
 - **Forgetting the markers makes replay ambiguous.** Without `turn/start` and
   `step/end` rows, a replayer cannot tell a finished turn from one that
-  crashed halfway. The boundaries are data, not printf debugging: they are
-  what makes the log a story instead of a pile of messages.
+  crashed halfway. The boundaries are data, not printf debugging: they turn
+  a collection of messages into a replayable execution record.
 
 ---
 
@@ -225,21 +224,21 @@ What the real agent loop adds on top of this section's Mechanism:
 
 - [`agent_loop.py`](src/agent_loop.py) (new): `Agent` with `send()` and
   `_step()`, `AgentRegistry`, and the plugin providing the `agents` service.
-- [`test.py`](src/test.py): the full turn story lands in the log in order,
+- [`test.py`](src/test.py): the complete turn record lands in the log in order,
   `request/header` counts prove re-derivation across a compaction (1, 3, 2),
   a replayed log plus a new Agent continues byte-for-byte, a crash mid-step
   leaves a clean next derivation, and a mid-turn `send()` refuses.
-- [`demo.py`](src/demo.py) (new): the first Live demo. The same loop with the
+- [`demo.py`](src/demo.py) (new): the first live demo. The same loop with the
   real Anthropic API plugged into the Model seam, scripted turns with a
-  compaction in the middle, and the log's own story printed at the end. The
-  SDK and the mini-Message translation live only here.
+  compaction in the middle, and the resulting log printed at the end. The
+  SDK and Mini-dsh-Message translation live only here.
 
 ```bash
 python sections/04-agent-loop/src/test.py   # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it skips politely
-without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt             # anthropic + python-dotenv

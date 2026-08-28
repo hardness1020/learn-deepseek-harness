@@ -2,9 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> After twelve sections, what a product actually mounts is still a Python
-> function somebody edits. Two builds are the same plugins in different
-> lists, so the harness stops being code and becomes a list.
+> After twelve sections, a Python function still decides what each product
+> mounts. Because different builds mostly use the same plugins in different
+> combinations, the harness configuration should be represented as data.
 
 Every section so far ended the same way: a check that assembled the
 harness by hand. Mount the session log, mount the tools, mount the
@@ -19,7 +19,7 @@ harness has to become data: one flat entry list, built by layers,
 each layer owned by whoever speaks for it, base vendor first, user
 last.
 
-The first instinct for the patch verb is a deep merge: let the base
+A natural choice for the patch operation is a deep merge: let the base
 carry the common keys and let each mode patch only the keys it
 changes. Real dsh refuses. A patch targets a row by id and replaces
 the row's whole config, never merging.
@@ -30,7 +30,7 @@ Because a merge makes a row's effective config emergent: to know
 what a row means you replay every layer that ever touched it, and a
 base default leaks into a mode that never asked for it. A replace
 keeps each row's truth in exactly one place: the last layer to
-touch it holds the whole story. The cost lands on bundle authors,
+touch it contains the complete configuration. The cost falls on bundle authors,
 by design: a row whose value differs by mode cannot live in base at
 all, and every mode restates that row's complete config. The
 section builds it as:
@@ -108,8 +108,8 @@ Row order therefore carries no load semantics. The base bundle can
 be listed backwards and the same product boots, because "when does
 this mount" is answered by the services on the ctx, the section 01
 substrate, not by position in a file. And when a row's service
-never arrives, the audit refuses the whole boot and names the wait,
-so a half-product cannot start quietly.
+never arrives, the audit refuses the whole boot and identifies the missing
+dependency, so a partially initialized product cannot start unnoticed.
 
 The base bundle makes the design question resident. The model row
 ships in base because every mode has one, but its value differs by
@@ -174,8 +174,7 @@ Compared with section 12:
   `capabilities.py`, `inbox.py`, `jobs.py`, `kernel.py`,
   `message.py`, `scheduler.py`, `session_log.py`, `skills.py`,
   `standin.py`, `subagent.py`, `system_prompt.py`, `tools.py`.
-  `composition.py` is the only new source file, so the diff
-  against 12 is this section's Mechanism, nothing else.
+  `composition.py` is the only new source file, so the diff against 12 contains only the mechanism introduced here.
 - No mechanism below changed to become composable. The rows mount
   the same plugins every prior check mounted by hand, through the
   same section 01 `ctx.plugin()` door; the model row reaches the
@@ -184,7 +183,7 @@ Compared with section 12:
 - The log gained no new event type. Composition happens before the
   first turn opens; the composed product's transcript is
   indistinguishable from a hand-built one, which is the point.
-- `demo.py`: the Live demo boots the base bundle under a live
+- `demo.py`: the live demo boots the base bundle under a live
   profile layer: one inserted adapter row, one inserted worker
   row, the scripted model row disabled, and the agent row's config
   replaced whole so its model is the live one.
@@ -214,14 +213,13 @@ and the bundles under
 | `mount_entries` on a fresh `Context()` | [`packages/boot/app-boot/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot/src/index.ts): `boot()` (line 757), rows mounted via [`vendor/loader/src/config/entry.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/vendor/loader/src/config/entry.ts) | `boot()` is `new Context()` then `ctx.plugin(Loader)`; each entry row becomes one plugin mount, each removal an unmount, the section 01 contract at product scale. |
 | the settle-then-audit pass | [`packages/boot/app-boot/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/boot/app-boot/src/index.ts): `assertEntriesActivated` (lines 700-725) | Row order carries no load semantics; activation is service-availability-driven, and the audit names rows still pending on missing services. |
 
-What the real composition layer adds on top of this section's
-Mechanism:
+Additional features in the production composition layer:
 
 - **A live entry list.** The Loader is itself a plugin and the list
   stays live: editing a row mounts or unmounts exactly the
-  difference in a running process, and HMR rides the same
-  machinery. HMR sits above this rebuild's Ceiling: pointed at
-  here, not rebuilt.
+  difference in a running process, and HMR uses the same
+  machinery. HMR is outside this tutorial's scope, so it is linked
+  here but not rebuilt.
 - **Profiles as products.** `dsh --profile web` and
   `dsh --profile headless`
   ([`apps/cli/src/args.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/apps/cli/src/args.ts))
@@ -234,7 +232,7 @@ Mechanism:
   is process-wide, presets per-agent.
 - **YAML rows and a real module system.** Rows live in
   `cordis.patch.yml` files a user can edit and diff, and names
-  resolve to npm packages through `resolveBundleDir`; the mini's
+  resolve to npm packages through `resolveBundleDir`; Mini-dsh's
   `PLUGINS` dict is that resolution with the filesystem removed.
 
 ---
@@ -248,7 +246,7 @@ Mechanism:
   row in one layer: the last patch is the whole truth.
 - **A factored-out default leaks into a mode that never asked.**
   Let base carry `{"name": "scripted", "responses": []}` and let a
-  profile merge in one key, and the profile's model quietly keeps
+  profile merge in one key, and the profile's model silently keeps
   base's leftovers. The check proves the opposite shape: after a
   replace, no key of the old config survives.
 - **Row position as load order breaks under patching.** Layers
@@ -277,7 +275,7 @@ Mechanism:
   the availability-driven loader with its settle-then-audit pass,
   the `PLUGINS` name table, and the sixteen-row `MINI_BASE`
   bundle.
-- [`test.py`](src/test.py): the Offline check proves the three
+- [`test.py`](src/test.py): the offline check proves the three
   verbs stack layers over an empty list, a replace takes the
   patch's config whole with nothing leaking from base, the
   sixteen rows boot the harness and a turn runs through the
@@ -285,7 +283,7 @@ Mechanism:
   identically, one disable row removes the skills subsystem, and
   a boot with a missing service refuses while naming every
   waiting row.
-- [`demo.py`](src/demo.py): the Live demo composes a live profile
+- [`demo.py`](src/demo.py): the live demo composes a live profile
   over the base bundle, prints the rows it produced, then proves
   them live: a shell turn through the sandbox rows and a
   foreground delegation to a worker row's provider.
@@ -294,8 +292,8 @@ Mechanism:
 python sections/13-composition/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it
-skips politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv

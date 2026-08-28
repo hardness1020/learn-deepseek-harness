@@ -6,19 +6,19 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 > and nothing goes back, the conversation keeps a question nobody answered.
 > So every call writes an answer, even a failed one.
 
-Section 04's loop can only talk. Every step ends `"completed"` because the
+Section 04's loop handles only text responses. Every step ends `"completed"` because the
 model has nothing to do but reply. Tools change that: the model asks
-mini-dsh to run something and needs the outcome back before it can go on.
+Mini-dsh to run something and needs the outcome back before it can go on.
 
-The obvious build is a dict of functions. Look up the name, call it, append
+A straightforward implementation uses a dict of functions. Look up the name, call it, append
 what it returns. If the name is unknown, raise. If the arguments are bad,
 raise. If a policy says no, raise before calling.
 
 But every one of those raises lands in the middle of a turn. The assistant
 message carrying the call is already in the log; the exception unwinds
 `send()` and leaves a question with no answer. The next derivation shows the
-model a transcript that ends mid-sentence, and replay rebuilds the same
-broken story.
+model a transcript that ends mid-sentence, and replay reconstructs the same
+incomplete conversation.
 
 So: why does a denied or errored call still produce a normal `tool/result`?
 
@@ -147,16 +147,16 @@ send("what is the wifi password?")
 
 The result joined the surface, so the second derivation is `user`,
 `assistant` (carrying its calls), `tool`: the model reads its own call and
-the answer as ordinary history. Section 02 quietly prepared for this:
+the answer as ordinary history. section 02 already prepared for this:
 `tool/result` has been in `SURFACE_TYPES` since the surface existed.
 
 Now rerun that turn with a guard that denies, a body that crashes, or a name
-that does not exist. The log records exactly the same shape of story; only
+that does not exist. The log records the same event structure in every case; only
 `is_error` and `content` differ. The turn survives, the model reads what
-went wrong, and the Offline check drives all four failures through one step
+went wrong, and the offline check drives all four failures through one step
 to prove no exception ever escapes `send()`.
 
-Scoping is the other half of the Mechanism. `request/header` now records
+Scoping is the other half of the mechanism. `request/header` now records
 which tools each request offered, so the log itself shows what a scope saw:
 a scope layer shadowing a global name, and a restriction narrowing agent b
 to `["where"]` while agent a still sees everything. A restricted tool is not
@@ -169,7 +169,7 @@ Compared with section 04:
 
 - `kernel.py` is carried forward verbatim. `tools.py` is the only new source
   file; the other changes are the tool thread pulled through existing files,
-  so the diff against 04 is this section's Mechanism, nothing else.
+  so the diff against 04 contains only the mechanism introduced here.
 - `message.py`: `Message` gains `tool_calls` (assistant) and `call_id`
   (tool), both defaulted, so every section 04 Message still reads the same.
 - `standin.py`: the Model seam gains a `tools` argument the Scripted
@@ -181,7 +181,7 @@ Compared with section 04:
   and the Model seam; the step offers schemas with the request, records them
   in `request/header`, runs calls through the pipeline, and fills in the
   `reason None` arm section 04 left as a socket.
-- `demo.py`: the Live demo now does real tool use, including a guard denial
+- `demo.py`: the live demo now does real tool use, including a guard denial
   the model has to read and explain.
 
 ---
@@ -199,13 +199,13 @@ with scoping in
 | --- | --- | --- |
 | `ToolRegistry` + `ToolScope` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `ToolRuntime`; [`packages/core/scope/src/store.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/scope/src/store.ts): `ScopedLayers` | `ctx.tools` is a `ScopedLayers`-backed registry: a global layer plus per-agent scope layers with name shadowing and intersecting restrictions, via `register` / `restrict`. |
 | `ToolDefinition` | [`packages/core/tools/src/schema.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/schema.ts): `defineTool()` | `ToolDefinition extends ToolSchema` (the schema type lives in [`packages/llm/llm/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/types.ts)) and adds typed args, an output `{schema, render}`, `timeoutMs`, `isConcurrencySafe`, `finalizeContent`. |
-| `pre()` votes | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `tools/pre-execute` | A waterfall event producing `PreToolDecision = allow \| deny \| ask`; the approval `ask` is answered by policy plugins and, above the Ceiling, the UI. |
+| `pre()` votes | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `tools/pre-execute` | A waterfall event producing `PreToolDecision = allow \| deny \| ask`; policy plugins and the UI can answer an approval request. The UI is outside this tutorial's scope. |
 | `guard()` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `ToolGuard` | `(execution) => string \| undefined`, deny-only and synchronous, applied inside the pipeline after approval. Distinct from the `packages/guard/*` plugins, which are ordinary event listeners. |
 | `post()` review | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `tools/post-execute` | A waterfall producing `PostToolDecision = accept \| block`, plus enrichment (the repeat-tool reminder rides here). |
 | the result dict | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `ToolExecutionSuccess` / `ToolExecutionFailure` | The same split, `isError: false \| true`, frozen before it becomes a `tools/result` event. |
-| the loop's serial for-loop over calls | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts): `executeToolCalls` | The real loop never calls `ctx.tools.execute()` directly; a 4-stage scheduler drives the calls. That scheduler is section 06's Mechanism. |
+| the loop's serial for-loop over calls | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts): `executeToolCalls` | The real loop never calls `ctx.tools.execute()` directly; a 4-stage scheduler drives the calls. That scheduler is section 06's mechanism. |
 
-What the real tools layer adds on top of this section's Mechanism:
+Additional features in the production tools layer:
 
 - **An around-waterfall for execution.** `tools/execute` wraps the body, so
   plugins can time-box it: the timeout policy
@@ -223,15 +223,15 @@ What the real tools layer adds on top of this section's Mechanism:
 - **More result powers.** A result can carry `concludesTurn` to end the turn
   early, and `tools/result` events record `sourceEventSeqs`; the runtime
   also emits `tools/change` when the visible set moves.
-- **A real answerer for `ask`.** The approval prompt a human sees is UI,
-  which sits above the Ceiling; the mini keeps the seam as one `asker`
-  callable and the Offline check answers it in code.
+- **A real answerer for `ask`.** The approval prompt shown to a human belongs to the UI,
+  which is outside this tutorial's scope. Mini-dsh keeps the seam as one `asker`
+  callable and the offline check answers it in code.
 
 ---
 
 ## Failure modes
 
-- **A raised denial tears the transcript.** The assistant message carrying
+- **Raising on denial leaves the transcript incomplete.** The assistant message carrying
   the call is already in the log when the pipeline says no. Raise instead of
   answering and the derived history ends with a question the model never
   hears back on; replay rebuilds the same hole. The result row is the
@@ -241,7 +241,7 @@ What the real tools layer adds on top of this section's Mechanism:
   a reason is information: the check's model reads four different failures
   in one step and still finishes the turn.
 - **An ask with no approver must deny.** Defaulting to allow would make an
-  unconfigured mini-dsh the most permissive one. The gate fails closed,
+  unconfigured Mini-dsh the most permissive one. The gate fails closed,
   and the check proves the same call runs once someone answers.
 - **Guards that could approve would fight.** Deny-only guards are monotonic:
   any guard can only shrink what runs, so their order never matters. A guard
@@ -275,21 +275,21 @@ What the real tools layer adds on top of this section's Mechanism:
 - [`message.py`](src/message.py), [`standin.py`](src/standin.py),
   [`session_log.py`](src/session_log.py): the tool thread, as listed under
   What changed.
-- [`test.py`](src/test.py): a tool turn goes around and lands the full story
+- [`test.py`](src/test.py): a tool turn loops and records the complete event sequence
   in order, four failure shapes come back as four normal results, the ask
   gate fails closed and tightens over loose votes, post review rewrites a
   result, scope shadowing and restriction show up in `request/header`, and
   unloading a tool plugin reverses its registration mid-conversation.
-- [`demo.py`](src/demo.py): the Live demo does real tool use. The model
+- [`demo.py`](src/demo.py): the live demo does real tool use. The model
   reads a note through the pipeline, then hits a guard denial and reports
-  what the tool told it, with the log's own story printed at the end.
+  what the tool reported, then prints the resulting log.
 
 ```bash
 python sections/05-tools/src/test.py        # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it skips politely
-without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt             # anthropic + python-dotenv

@@ -12,7 +12,7 @@ Instruction text does not fit that budget: a harness accumulates
 how-to text for specialized work, and any one turn uses almost none
 of it.
 
-The two obvious homes are both wrong. Bake every instruction into
+Neither common location works. Bake every instruction into
 the system text and every request pays for all of them, used or
 not. Leave them out entirely and the model cannot use what it never
 hears about.
@@ -93,7 +93,7 @@ ctx.effect(
 ```
 
 Bodies cross the other way, through the tool pipeline built in
-section 05. An unknown name raises inside the body, and the
+Section 05. An unknown name raises inside the body, and the
 pipeline turns that into a normal `is_error` result, so the
 transcript keeps its shape:
 
@@ -149,16 +149,16 @@ Compared with section 08:
   `kernel.py`, `message.py`, `scheduler.py`, `session_log.py`,
   `standin.py`, `system_prompt.py`, `tools.py`. `skills.py` is the
   only new source file, so the diff against 08 is this section's
-  Mechanism, nothing else.
-- The loop did not change because the Mechanism is pure plugin: the
+  mechanism, nothing else.
+- The loop did not change because the mechanism is pure plugin: the
   catalog enters through a section 08 context provider, and bodies
-  enter through a section 05 tool. This is the first Section whose
-  Mechanism lands without touching a carried file.
+  enter through a section 05 tool. This is the first section whose
+  mechanism lands without touching a carried file.
 - The log's shape gained no new event type. A snapshot row may now
   carry the catalog block, and a `tool/result` row may carry a
   skill body; derived history treats both as the plain rows they
   are.
-- `demo.py`: the Live demo hands a real model a catalog, lets it
+- `demo.py`: the live demo hands a real model a catalog, lets it
   load a body on demand, and registers a second provider between
   turns so the re-emit happens on a real model call.
 
@@ -173,14 +173,14 @@ The registry lives in the skill package family:
 
 | Mini-dsh | Real dsh | Notes |
 | --- | --- | --- |
-| `SkillRegistry` in `skills.py` | [`packages/skill/skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts): `SkillRegistry` | The real registry extends `Service` under `ctx.skills`, a plural seam like the mini's. Its layers are scope-aware (`SkillLayer implements ScopeLayer`); the mini layers by registration order alone. |
-| the provider duck type (`list()` / `get(name)`) | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts): `SkillProvider` | An interface resolving names to instruction text (line 248), not a Service. Registration takes a factory handed a `SkillProviderControl` (line 391), the real form of the mini's undo callable. |
-| `MemorySkillProvider` | [`packages/skill/skill-filesystem/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill-filesystem/src/index.ts): `FileSystemSkillProvider` | The shipped provider resolves skill directories on disk (line 146); the mini's dict-backed provider keeps the Offline check free of the filesystem. |
+| `SkillRegistry` in `skills.py` | [`packages/skill/skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts): `SkillRegistry` | The real registry extends `Service` under `ctx.skills`, a plural seam like Mini-dsh's. Its layers are scope-aware (`SkillLayer implements ScopeLayer`); Mini-dsh layers by registration order alone. |
+| the provider duck type (`list()` / `get(name)`) | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts): `SkillProvider` | An interface resolving names to instruction text (line 248), not a Service. Registration takes a factory handed a `SkillProviderControl` (line 391), the real form of Mini-dsh's undo callable. |
+| `MemorySkillProvider` | [`packages/skill/skill-filesystem/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill-filesystem/src/index.ts): `FileSystemSkillProvider` | The shipped provider resolves skill directories on disk (line 146); Mini-dsh's dict-backed provider keeps the offline check free of the filesystem. |
 | the catalog context provider | [`packages/skill/tool-skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/tool-skill/src/index.ts) | Real consumers publish the catalog from `agent/pre-step` listeners (lines 177, 213), the pre-step plane section 08 pointed at. The mini has no pre-step hook, so its catalog rides the snapshot context plane instead. |
 | the `skill` tool | [`tool-skill/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/tool-skill/src/index.ts) | The body loads on demand through the tool (line 82): the same catalog/body split, delivered by the same two planes. |
-| the snapshot dedupe as change signal | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts): `skills/change` | The real registry announces provider changes on a bus event (line 297) and consumers invalidate caches; the mini re-resolves per assembly and lets the snapshot dedupe absorb the quiet steps. |
+| the snapshot dedupe as change signal | [`index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/skill/skill/src/index.ts): `skills/change` | The real registry announces provider changes on a bus event (line 297) and consumers invalidate caches; Mini-dsh re-resolves per assembly and lets the snapshot dedupe absorb the quiet steps. |
 
-What the real skills layer adds on top of this section's Mechanism:
+Additional features in the production skills layer:
 
 - **Scope-aware layers.** `SkillLayer implements ScopeLayer`, the
   same machinery the tool registry uses, so a subagent's scope can
@@ -207,12 +207,12 @@ What the real skills layer adds on top of this section's Mechanism:
   instruction and each request carries all of them while a turn
   uses at most one. `list()` yields names and a line apiece;
   `get(name)` is the only door a body leaves through.
-- **A catalog in the system text moves the prefix.** Section 08's
+- **A catalog in the system text moves the prefix.** section 08's
   promise is byte-identical system text; a provider mounting
   mid-session would rewrite it and bust the prompt-prefix cache. As
   context, a catalog change costs one `user/message` row and the
   prefix holds.
-- **An unknown name that raises tears the transcript.** The model
+- **Raising on an unknown name leaves the transcript incomplete.** The model
   will misspell a skill eventually. The `skill` tool's body raises,
   the section 05 pipeline answers with a normal `is_error` result,
   and the turn keeps going instead of crashing the loop.
@@ -237,14 +237,14 @@ What the real skills layer adds on top of this section's Mechanism:
   providers and shadowing resolution; `MemorySkillProvider`; the
   plugin wiring the catalog context, the `skill` tool, and the
   `skills` service.
-- [`test.py`](src/test.py): the Offline check proves the catalog
+- [`test.py`](src/test.py): the offline check proves the catalog
   rides the snapshot row without a body in it, a body arrives only
   as a `tool/result` after a `skill` call, a provider change
   re-emits the catalog while an unchanged one stays quiet, a later
   layer shadows a name until its undo uncovers the layer below, an
   unknown name stays a normal error result, and an empty catalog
   ships nothing.
-- [`demo.py`](src/demo.py): the Live demo lets a real model read
+- [`demo.py`](src/demo.py): the live demo lets a real model read
   the catalog, load a body on demand, and sign off with a skill
   whose provider registered between turns.
 
@@ -252,8 +252,8 @@ What the real skills layer adds on top of this section's Mechanism:
 python sections/09-skills/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it skips
-politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv
