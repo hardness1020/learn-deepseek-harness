@@ -13,10 +13,10 @@ replies batch: a model told to read three notes asks for all three at
 once, and the serial loop turns three one-second reads into three
 seconds of waiting.
 
-The obvious build is to throw every call at a thread pool and append
+It is easy to submit every call to a thread pool and append
 each result as it lands. But now the log's order depends on thread
 timing: run the same turn twice and get two different transcripts, so
-replay stops reconstructing and starts racing. A write overlapping the
+replay can no longer reconstruct a deterministic record. A write overlapping the
 read that feeds it sees half a world. And when a turn is cancelled
 mid-flight, the calls that never started are questions the assistant
 message already asked: section 05's torn transcript, reached by a new
@@ -152,7 +152,7 @@ send("stop everything")
 The sibling was already dispatched, so it kept running to its end.
 The two calls behind the barrier never started, and finish answered
 them anyway. Derive the history and every question has its answer:
-replay rebuilds the same story, cancel and all.
+replay reconstructs the same event sequence, including the cancellation.
 
 ### What changed
 
@@ -161,8 +161,7 @@ Compared with section 05:
 - `kernel.py`, `message.py`, `session_log.py`, `standin.py` are
   carried forward verbatim. `scheduler.py` is the only new source
   file; the other changes are the scheduler thread pulled through
-  existing files, so the diff against 05 is this section's Mechanism,
-  nothing else.
+  existing files, so the diff against 05 contains only the mechanism introduced here.
 - `tools.py`: `ToolDefinition` gains `is_concurrency_safe` (default
   `False`), and the registry and scope gain `is_safe()`. The pipeline
   itself is untouched.
@@ -173,7 +172,7 @@ Compared with section 05:
 - The log's shape for a multi-call reply changed: all `tool/call` rows
   now land before the first `tool/result` (before dispatch), instead
   of interleaving call and result pair by pair.
-- `demo.py`: the Live demo registers a parallel-safe read and an
+- `demo.py`: the live demo registers a parallel-safe read and an
   exclusive write, both deliberately slow, and prints each body's
   wall-clock window so the overlap is visible on the clock.
 
@@ -191,11 +190,11 @@ The scheduler lives in the loop package, not the tool runtime:
 | `execute_tool_calls` in `scheduler.py` | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts): `executeToolCalls` | The loop never calls `ctx.tools.execute()` directly on a reply's calls; `executeToolCalls` drives the same 4-stage `prepare / dispatch / finalize / finish` scheduler. |
 | `is_concurrency_safe` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `ToolDefinition` | `ToolDefinition.isConcurrencySafe`, declared per tool; exclusive unless the tool claims otherwise. |
 | the synthetic result | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `TOOL_ABORTED_BEFORE_DISPATCH` | A distinct code from `TOOL_ABORTED`, so a transcript can tell a skipped call from an interrupted one. |
-| `Agent.cancel()` + `threading.Event` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `Agent.cancel` | Real cancellation is fused abort signals threaded through the whole runtime; the mini keeps one event per turn, checked at batch boundaries. |
-| finish appends in model order | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts) | Results become session events in the loop, not the registry; `tool/result` events also carry `sourceEventSeqs` linking each answer to its rows, where the mini leans on `call_id`. |
+| `Agent.cancel()` + `threading.Event` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `Agent.cancel` | Real cancellation is fused abort signals threaded through the whole runtime; Mini-dsh keeps one event per turn, checked at batch boundaries. |
+| finish appends in model order | [`packages/core/agent-loop/src/tool-calls.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/tool-calls.ts) | Results become session events in the loop, not the registry; `tool/result` events also carry `sourceEventSeqs` linking each answer to its rows, where Mini-dsh leans on `call_id`. |
 | the `ThreadPoolExecutor` | [`packages/core/tools/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/tools/src/index.ts): `TOOL_RUNTIME_SCHEDULER` | The runtime reaches its scheduler through a named seam rather than a hard-coded pool. |
 
-What the real scheduler adds on top of this section's Mechanism:
+Additional features in the production scheduler:
 
 - **Aborting started calls, cooperatively.** `TOOL_ABORTED` exists for
   calls interrupted after dispatch: fused signals reach the body, and
@@ -207,11 +206,11 @@ What the real scheduler adds on top of this section's Mechanism:
 - **More ways to end early.** A result can carry `concludesTurn`,
   ending the turn early. The mini's only early exit is `cancel()`.
 - **Async all the way down.** dsh's tool bodies are async, so overlap
-  is promise concurrency in one thread; the mini's bodies are plain
-  Python callables, so it buys the same overlap with a thread pool.
-- **A human on the cancel button.** In real dsh the cancel usually
-  arrives from the UI, which sits above the Ceiling; the mini exposes
-  `cancel()` as a plain method and the Offline check presses it from
+  is promise concurrency in one thread; Mini-dsh's bodies are plain
+  Python callables, so a thread pool provides the same overlap.
+- **User-driven cancellation.** In real dsh a cancellation usually
+  arrives from the UI, which is outside this tutorial's scope. Mini-dsh exposes
+  `cancel()` as a plain method and the offline check presses it from
   inside a tool body.
 
 ---
@@ -221,8 +220,8 @@ What the real scheduler adds on top of this section's Mechanism:
 - **Append-on-completion makes the log a race.** Let workers append
   results as they finish and the same turn produces a different
   transcript every run; replay stops being a reconstruction. Finish
-  appends in model order from one thread, so concurrency never shows
-  up in the story, only in the clock.
+  appends in model order from one thread, so concurrency affects elapsed
+  time without changing the event order.
 - **Opt-out safety would invert the burden.** If tools were safe
   unless marked exclusive, every author who forgot the flag would be
   gambling with shared state. Exclusive-by-default means the worst
@@ -266,16 +265,16 @@ What the real scheduler adds on top of this section's Mechanism:
   quick call finished first, and a cancel pressed mid-batch lets
   started work finish while the unstarted calls come back synthetic
   and the next turn starts fresh.
-- [`demo.py`](src/demo.py): the Live demo asks for two parallel
+- [`demo.py`](src/demo.py): the live demo asks for two parallel
   lookups and then an exclusive save, and prints each body's
-  wall-clock window plus the log's own story.
+  wall-clock window plus the resulting log.
 
 ```bash
 python sections/06-scheduler/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it skips
-politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt             # anthropic + python-dotenv

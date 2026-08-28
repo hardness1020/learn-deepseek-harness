@@ -6,22 +6,21 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 > and the machine come as one piece. Split all three on day one and nothing
 > ever swaps. So split when some code must not know which machine answers.
 
-Ten sections in, mini-dsh still touches nothing outside its own
-log. The first real capability, reading a file or running a
-command, has to live somewhere, and the obvious home is the tool
-body itself.
+Ten sections in, Mini-dsh still touches nothing outside its own
+log. The first real capability, such as reading a file or running a
+command, has to live somewhere. The most direct place is the tool body.
 
-That home welds three decisions into one function: what the model
+That choice couples three decisions in one function: what the model
 sees, what the contract is, and which machine does the work. The
-Offline check needs its files in memory; your laptop needs the real
+offline check needs its files in memory; your laptop needs the real
 disk; a locked-down host needs neither. Serve all three from one
 tool body and you write that body three times over, and the schema
 the model plans against moves every time you do.
 
-The opposite ceremony fails too. Give every capability an
-interface, a backend package, and a tool package on day one, and
-the harness drowns in one-implementation abstractions nobody ever
-swaps.
+Over-abstracting every capability upfront creates a different problem. If
+each capability gets an interface, a backend package, and a tool package on
+day one, the harness accumulates abstractions that may never have a second
+implementation.
 
 So: when does a capability earn the three-way split?
 
@@ -94,7 +93,7 @@ class SandboxedShellExecutor(ShellExecutor):
 
 The llm bend folds the other direction. Its consumer is the agent
 loop itself, the `model` parameter every Agent has taken since
-section 04, so a separate Consumer home would draw a boundary no
+Section 04, so a separate Consumer home would draw a boundary no
 swap ever crosses. And the Model seam already is the contract: a
 plain callable streaming chunks then one final Message needs no
 ABC. What remains is plurality, a registry of named adapters, and
@@ -177,9 +176,8 @@ Compared with section 09:
 - Every carried file is verbatim: `agent_loop.py`, `inbox.py`,
   `kernel.py`, `message.py`, `scheduler.py`, `session_log.py`,
   `skills.py`, `standin.py`, `system_prompt.py`, `tools.py`.
-  `capabilities.py` is the only new source file, so the diff
-  against 09 is this section's Mechanism, nothing else.
-- The Mechanism lands as pure plugin again: Consumers enter
+  `capabilities.py` is the only new source file, so the diff against 09 contains only the mechanism introduced here.
+- The mechanism lands as pure plugin again: Consumers enter
   through the section 05 registry, Providers through the kernel's
   `provide()`, and the llm fold through the model parameter the
   loop has taken since section 04. The split needed no new
@@ -191,7 +189,7 @@ Compared with section 09:
 - The log gained no new event type. A backend swap shows up only
   as differing `tool/result` rows under identical `request/header`
   rows.
-- `demo.py`: the Live demo mounts the real Anthropic adapter
+- `demo.py`: the live demo mounts the real Anthropic adapter
   through the llm runtime, swaps the fs backend between turns, and
   lets the model report the sandbox stub's fenced argv.
 
@@ -213,16 +211,16 @@ Each seam is a package family:
 | `provider("fs", MemoryFileSystem(...))` | [`packages/fs/fs-local/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/fs/fs-local/src/index.ts): `LocalFileSystem`, [`packages/fs/fs-sandbox/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/fs/fs-sandbox/src/index.ts): `SandboxedFileSystem` | The shipped Providers. The sandboxed fs fences paths through `ctx.sandboxPolicy` (line 127), a second sandbox surface this rebuild folds into `confine`'s policy name. |
 | the `read`/`write` tools | [`packages/fs/tool-fs/src/read.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/fs/tool-fs/src/read.ts) and siblings | Consumers: `read`, `write`, `edit`, `read_image`, with `glob` and `grep` elsewhere in `packages/fs`. No tool schema names a backend. |
 | `ShellExecutor`, exclusive mount | [`packages/shell/shell/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/shell/shell/src/index.ts): `ShellExecutor` | `ctx.shell` (line 65) allows one implementation per context; a second registration throws (lines 48-50). The mini gets the same refusal from the kernel's `provide()`. |
-| `SandboxedShellExecutor` | [`packages/shell/bash-sandbox/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/shell/bash-sandbox/src/index.ts): `SandboxBashExecutor` | Calls `ctx.sandbox.confine(['bash', '-c', command], policy)` (line 178): a shell Provider consuming the sandbox seam, the mini's decorator with a real machine behind it. |
+| `SandboxedShellExecutor` | [`packages/shell/bash-sandbox/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/shell/bash-sandbox/src/index.ts): `SandboxBashExecutor` | Calls `ctx.sandbox.confine(['bash', '-c', command], policy)` (line 178): a shell Provider consuming the sandbox seam, Mini-dsh's decorator with a real machine behind it. |
 | `ArgvRewriteSandbox.confine` | [`packages/sandbox/sandbox/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/sandbox/sandbox/src/index.ts): `SandboxProvider` | `confine(argv, policy)` is the Definition's sole abstract method (line 158); the seam owns no tool and no events. |
 | `LlmRuntime` | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts): `LlmRuntime`, `LlmAdapter` | Definition and Consumer folded in one package: `ctx.llm` (line 284) is consumed by the loop, and adapters subclass `LlmAdapter` (line 180). Providers like [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts) register through `ctx.llm.registerAdapter`. |
 
-What the real seams add on top of this section's Mechanism:
+Additional features in the production capability layers:
 
 - **Real confinement.** `sandbox-local` chains platform runners:
   `bwrap` and `landlock` on linux, `seatbelt` on darwin (line
-  160), plus a Windows ACL provider. That machinery is this
-  rebuild's Ceiling: the argv-rewrite stub keeps the seam's shape
+  160), plus a Windows ACL provider. That machinery is outside this
+  tutorial's scope: the argv-rewrite stub keeps the seam's shape
   and its fail-closed rule, but enforces nothing, and the
   confinement itself is pointed at here, never rebuilt.
 - **Seam-owned events.** The fs Definition owns `fs/write-intent`
@@ -246,7 +244,7 @@ What the real seams add on top of this section's Mechanism:
 
 ## Failure modes
 
-- **A tool that imports a provider welds the seam shut.** If the
+- **A tool that imports a provider bypasses the interface.** If the
   `read` body constructs a backend or opens the disk itself,
   swapping machines means editing the tool, and every environment
   forks the schema. The body resolves `"fs"` per call and speaks
@@ -282,13 +280,13 @@ What the real seams add on top of this section's Mechanism:
   `EchoShellExecutor`, `ArgvRewriteSandbox`,
   `SandboxedShellExecutor`), the `provider()` plugin factory, the
   folded `LlmRuntime`, and the consumer tools.
-- [`test.py`](src/test.py): the Offline check proves a backend
+- [`test.py`](src/test.py): the offline check proves a backend
   swap changes results under a byte-identical schema, an exclusive
   seam refuses a second mount, the sandbox's rewrite reaches the
   log through the shell provider, an unknown policy and a missing
   provider both answer as normal error results, and llm adapters
   coexist by name and swap under a live agent.
-- [`demo.py`](src/demo.py): the Live demo consumes the real model
+- [`demo.py`](src/demo.py): the live demo consumes the real model
   through the llm runtime, swaps the fs backend between turns, and
   has the model report the fenced argv the sandbox stub produced.
 
@@ -296,8 +294,8 @@ What the real seams add on top of this section's Mechanism:
 python sections/10-capability-seams/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it
-skips politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv

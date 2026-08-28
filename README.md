@@ -13,9 +13,9 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
 </div>
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) is a real agent harness: a large TypeScript codebase built on Cordis, where everything is a plugin. Reading it cold is hard because its design ideas are spread across many packages.
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) is a production agent harness: a large TypeScript codebase built on Cordis, where everything is a plugin. Reading it from top to bottom is difficult because its core design is distributed across many packages.
 
-This tutorial takes the other route. You rebuild a minimal version, Mini-dsh, in plain stdlib Python across 14 Sections in 4 Phases. Each Section adds exactly one Mechanism, verifies it with an Offline check, and points back to where the real dsh implements it.
+This tutorial takes a different approach. You will rebuild a minimal version, Mini-dsh, using only Python's standard library. The material is organized into 14 sections across four phases. Each section adds one mechanism, verifies it with an offline check, and links it to the corresponding implementation in dsh.
 
 **Contents**: [Big picture](#big-picture) · [How to learn](#how-to-learn) · [Sections](#sections) · [Repository structure](#repository-structure) · [Running](#running) · [Contributing](#contributing) · [References](#references)
 
@@ -25,43 +25,43 @@ Everything you build, on one page: the kernel that mounts it, the loop that runs
 
 ![Mini-dsh architecture](assets/architecture.png)
 
-One rule carries through every Section, because it is the rule the real system is built on:
+One rule carries through every section because the real system is built on it:
 
 > Everything is a plugin, and every registration is reversible.
 
 ## How to learn
 
-Every Section reads through the same 4-part Lens:
+Every section follows the same four-part structure:
 
-1. **Opening**: the one design question this Section answers, before any code.
-2. **Mechanism**: the moving parts you build, with excerpts and a flow diagram.
-3. **In real dsh**: a table mapping your Mini-dsh symbols to the real dsh symbols, with links pinned to the Studied version, plus what the real system adds that the rebuild omits (the Ceiling).
-4. **Failure modes**: what breaks without the Mechanism, not just what works with it.
+1. **Opening**: the design question the section answers before introducing any code.
+2. **Mechanism**: the components you will build, explained with excerpts and a flow diagram.
+3. **In real dsh**: a table that maps Mini-dsh symbols to their dsh counterparts. The links are pinned to the studied version and note the production features omitted from this tutorial.
+4. **Failure modes**: what breaks when the mechanism is missing, not only what works when it is present.
 
-Read the Sections in order: each one carries the previous `src/` forward verbatim and adds one Mechanism (Carry-forward). Run each Section's Offline check as you go. To see a Mechanism in isolation, diff adjacent `src/` directories: the diff is exactly the Mechanism.
+Read the sections in order. Each one copies the previous `src/` directory unchanged and adds one mechanism. Run the section's offline check as you go. To examine a mechanism in isolation, compare two adjacent `src/` directories; the diff contains only the new mechanism.
 
 ## Sections
 
 | # | Section | Design question | Mechanism |
 |---|---------|-----------------|-----------|
 | | **Foundation** | | |
-| 00 | [Setup](sections/00-setup/) | why does mini-dsh's core speak its own Message shape through a swappable Model seam? | provider-agnostic `Message`, streaming Model seam, Scripted stand-in |
-| 01 | [Kernel](sections/01-kernel/) | why can the framework unload a plugin correctly, rather than per-plugin cleanup? | fiber/effect reversible registrations |
-| 02 | [Session log](sections/02-session-log/) | why derive model history from a log instead of storing a message list? | append-only log + surface + deriveMessages |
-| 03 | [Compaction](sections/03-compaction/) | if the log is append-only, how does compaction remove anything the model sees? | surface `replace` op |
+| 00 | [Setup](sections/00-setup/) | Why should Mini-dsh use its own `Message` format behind a swappable model interface? | provider-agnostic `Message`, streaming model interface, scripted stand-in |
+| 01 | [Kernel](sections/01-kernel/) | Why should the framework own plugin cleanup? | fiber/effect reversible registrations |
+| 02 | [Session log](sections/02-session-log/) | Why derive model history from a log instead of storing a message list? | append-only log + surface + `deriveMessages()` |
+| 03 | [Compaction](sections/03-compaction/) | If the log is append-only, how does compaction remove anything the model sees? | surface `replace` op |
 | | **The Loop** | | |
-| 04 | [Agent loop](sections/04-agent-loop/) | why re-assemble the prompt and re-derive history every step? | turn/step machine, log = only durable state |
-| 05 | [Tools](sections/05-tools/) | why does a denied/errored call still produce a normal tool/result? | scoped registry + pre/ask/guard/execute/post pipeline |
-| 06 | [Scheduler](sections/06-scheduler/) | why do parallel-safe calls overlap, exclusive calls form barriers, and aborted-unstarted calls get synthetic results? | 4-stage parallel tool scheduler |
-| 07 | [Inbox](sections/07-inbox/) | why two inbox targets, and why claim only at step boundaries? | next-turn/next-step steering |
-| 08 | [System prompt](sections/08-system-prompt/) | why is dynamic state a re-emitted user message rather than system text? | ordered providers -> system text + tool list + runtime-context snapshot |
-| 09 | [Skills](sections/09-skills/) | why inject a catalog as context but load bodies through a tool call? | layered provider registry; catalog injected, bodies on demand |
+| 04 | [Agent loop](sections/04-agent-loop/) | Why reassemble the prompt and rederive history before every step? | turn/step state machine, with the log as the only durable state |
+| 05 | [Tools](sections/05-tools/) | Why should a denied or failed call still produce a normal `tool/result`? | scoped registry + pre/ask/guard/execute/post pipeline |
+| 06 | [Scheduler](sections/06-scheduler/) | Why do parallel-safe calls overlap, exclusive calls form barriers, and unstarted calls receive synthetic results after cancellation? | four-stage parallel tool scheduler |
+| 07 | [Inbox](sections/07-inbox/) | Why use two inbox targets and claim messages only at step boundaries? | next-turn/next-step steering |
+| 08 | [System prompt](sections/08-system-prompt/) | Why represent dynamic state as a re-emitted user message instead of system text? | ordered providers -> system text + tool list + runtime-context snapshot |
+| 09 | [Skills](sections/09-skills/) | Why inject a catalog as context but load full skill content through a tool call? | layered provider registry; catalog injected, bodies loaded on demand |
 | | **Capabilities** | | |
-| 10 | [Capability seams](sections/10-capability-seams/) | when does a capability earn the three-way split? | Definition/Provider/Consumer ABCs (fs/shell/sandbox/llm) |
-| 11 | [Jobs](sections/11-jobs/) | who owns cancellation once the job id is published? | owner-fenced background-work protocol |
-| 12 | [Subagent](sections/12-subagent/) | why an interface over "establish a child, hand back a run", not a subclassed agent? | named-provider delegation registry |
+| 10 | [Capability seams](sections/10-capability-seams/) | When does a capability justify the three-way split? | Definition/Provider/Consumer ABCs (fs/shell/sandbox/llm) |
+| 11 | [Jobs](sections/11-jobs/) | Who owns cancellation after a job ID is published? | owner-fenced background-work protocol |
+| 12 | [Subagent](sections/12-subagent/) | Why should subagents use a provider interface instead of inheriting from `Agent`? | named-provider delegation registry |
 | | **Composition** | | |
-| 13 | [Composition](sections/13-composition/) | why is a patch a whole-config replace, not a deep merge? | ordered patch layers over an empty entry list |
+| 13 | [Composition](sections/13-composition/) | Why should a patch replace the entire configuration instead of deep-merging it? | ordered patch layers over an empty entry list |
 
 ## Repository structure
 
@@ -87,14 +87,14 @@ learn-deepseek-harness/
 
 ## Running
 
-The Offline checks are the tutorial's proof. They are stdlib-only: nothing to install, no API key, no network, deterministic output.
+The offline checks verify each mechanism. They use only Python's standard library, require no API key or network connection, and produce deterministic output.
 
 ```bash
 python sections/00-setup/src/test.py     # one section
 for t in sections/*/src/test.py; do python "$t" || break; done   # all sections
 ```
 
-Model-touching Sections (04 and later) also ship a Live demo that runs scripted turns against the real Anthropic API. It skips politely if no key is set.
+Sections 04 and later also include a live demo that runs scripted turns against the Anthropic API. The script exits cleanly if no API key is configured.
 
 ```bash
 pip install -r requirements.txt
@@ -104,12 +104,12 @@ python sections/04-agent-loop/src/demo.py
 
 ## Contributing
 
-- **Deepen a Section**: a sharper excerpt, a better failure mode, a tighter check for an existing Mechanism.
+- **Improve a section**: add a clearer excerpt, a more useful failure mode, or a stricter check for an existing mechanism.
 - **Correct the record**: a mini-to-real mapping or claim about dsh that the pinned source contradicts.
 
 ## References
 
 - [Cordis primer](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/cordis-primer.md): dsh's own intro to the plugin runtime it is built on.
 - [Cordis tutorial](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/cordis-tutorial): writing real dsh plugins; this tutorial defers all plugin-authoring how-to there.
-- [Subsystem docs](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/subsystems): per-subsystem design docs, the counterpart of each Section's In-real-dsh slot.
+- [Subsystem docs](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/docs/subsystems): design documentation for each subsystem, corresponding to the "In real dsh" section in each chapter.
 - [cordiverse/cordis](https://github.com/cordiverse/cordis): the upstream framework dsh vendors.

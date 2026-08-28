@@ -2,40 +2,40 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> Every part of the harness ends up asking the model something. Call a
-> provider's SDK at each of those places and its format follows into the
-> prompt, the log, and the loop. So the core keeps one message shape, and
-> one swappable call hides the provider.
+> Many parts of the harness eventually need to call a model. If each part
+> calls a provider SDK directly, that provider's data format spreads into
+> the prompt, the log, and the loop. The core therefore uses one message
+> format and hides the provider behind a swappable function.
 
-DeepSeek Harness (dsh) is a real agent harness: a large TypeScript codebase
+DeepSeek Harness (dsh) is a production agent harness: a large TypeScript codebase
 in which tools, prompts, and whole subsystems are plugins mounted onto a
-running kernel. This tutorial rebuilds a minimal version of it in stdlib
-Python, one Mechanism per section.
+running kernel. This tutorial rebuilds a minimal version of it using only
+Python's standard library, one mechanism per section.
 
-Every one of those mechanisms orbits a single act: asking a model for a
-response. History is derived for the model, tools are called by the model,
-prompts are assembled for the model.
+All of those mechanisms support the same core operation: asking a model for
+a response. The harness derives history, exposes tools, and assembles prompts
+for each model call.
 
-So mini-dsh needs a way to ask, and the obvious way is to import a
-provider's SDK and call it wherever an answer is needed.
+A common first implementation imports a provider SDK wherever a model call
+is needed.
 
 That spreads the provider through the harness. Its request format reaches the
 prompt builder, its response objects reach the log, its role names reach
 compaction, and changing providers becomes an edit in every one of them.
 
-The answer also arrives in pieces. A model writes its text as it goes, so a
-caller that waits for one finished string can show nothing while it waits,
-and the log has nothing to record until the end.
+Model responses are usually streamed. A caller that waits for one completed
+string cannot display progress, and the log has nothing to record until the
+response finishes.
 
-So: why does mini-dsh's core speak its own Message shape through a swappable
-Model seam?
+Why should Mini-dsh use its own `Message` format behind a swappable model
+interface?
 
 Because the harness's real subject is everything around the model call, and
 none of that work should depend on whose model answers. One shape goes in,
 one shape comes back, and the provider turns into a part you plug in. For
 that to hold, section 00 must:
 
-1. Give mini-dsh its own **Message shape**, provider-agnostic like real dsh,
+1. Give Mini-dsh its own **Message shape**, provider-agnostic like real dsh,
    so no vendor wire format ever leaks into the core.
 2. Fix the **Model seam**: a plain callable that takes the message list and
    streams chunk events, then exactly one final message.
@@ -125,8 +125,8 @@ check                                  ScriptedModel(["Hello, reader."])
 
 The two phases matter more than the stand-in does. The chunks are the live
 stream; the final `Message` is the durable record, and it always restates the
-full text. Section 02's log will store them as different event types, and
-section 04's loop will forward both without buffering.
+full text. section 02's log will store them as different event types, and
+Section 04's loop will forward both without buffering.
 
 ### What changed
 
@@ -135,9 +135,9 @@ later section inherits:
 
 - `src/` is born: `message.py` and `standin.py` are the source, `test.py`
   the check.
-- The carry-forward rule starts here. Section 01 copies this `src/` verbatim
+- The carry-forward rule starts here. section 01 copies this `src/` verbatim
   and adds only its kernel, so the diff between adjacent sections is exactly
-  one Mechanism, nothing else.
+  one mechanism, nothing else.
 - Nothing here knows about plugins, logs, or agents. The seam is a calling
   convention waiting for its callers.
 
@@ -154,11 +154,11 @@ The Model seam's real home is
 | --- | --- | --- |
 | `Message` | [`packages/llm/llm/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/types.ts) | The llm seam owns the vocabulary types, provider-agnostic like ours; `ToolSchema` (line 333) sits in this file, which is how tools later describe themselves to the model. Mini-dsh's whole vocabulary is one dataclass. |
 | the Model seam contract | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts): `LlmAdapter` (line 180) | The seam is a stream there too: `stream(options)` returns an `AsyncIterable<StreamChunk>`. The mini's chunks-then-message convention is the same idea with the final message made explicit. |
-| `ScriptedModel` behind the seam | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts): `LlmRuntime`, `ctx.llm` (line 284) | Adapters register through `ctx.llm.registerAdapter(providers, adapter)` and swap without the caller noticing. The stand-in is mini-dsh's first adapter. |
-| the check calling `model(messages)` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | The real consumer is the loop: `ctx.llm.prepareCall()` then `preparedCall.stream(request)` (lines 345, 449). Section 04 gives the mini the same caller. |
+| `ScriptedModel` behind the seam | [`packages/llm/llm/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm/src/index.ts): `LlmRuntime`, `ctx.llm` (line 284) | Adapters register through `ctx.llm.registerAdapter(providers, adapter)` and swap without the caller noticing. The stand-in is Mini-dsh's first adapter. |
+| the check calling `model(messages)` | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | The real consumer is the loop: `ctx.llm.prepareCall()` then `preparedCall.stream(request)` (lines 345, 449). section 04 gives Mini-dsh the same caller. |
 | chunks, then one final message | [`packages/core/session/src/types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/session/src/types.ts) (line 236) | The stream's two phases become the session event types `assistant/chunk` and `assistant/message` once the log exists (section 02). |
 
-What the real llm seam adds on top of this section's Mechanism:
+Additional features in the production LLM layer:
 
 - **An adapter registry with routing.** `ctx.llm` holds plural adapters
   keyed by provider name, and choosing a deployment's default model is its
@@ -173,14 +173,14 @@ What the real llm seam adds on top of this section's Mechanism:
   [`llm-deepseek`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-deepseek/src/index.ts)
   and
   [`llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/llm/llm-pi-ai/src/index.ts)
-  speak vendor protocols. Ceiling: mini-dsh never rebuilds a wire adapter;
-  its only real-API code is the Live demo's ~20-line Anthropic translation
+  speak vendor protocols. Building a wire adapter is outside this tutorial's scope;
+  its only real-API code is the live demo's ~20-line Anthropic translation
   in `demo.py` (sections 04 and later), outside the offline core.
 - **A fold, not a triple.** Real dsh usually splits a capability three ways:
   a package defining the interface, packages providing it, packages
   consuming it. The llm seam folds definition and consumer into one package
   because its consumer is the agent loop itself, not a swappable tool
-  surface. Section 10 rebuilds the seam and that folding rule.
+  surface. section 10 rebuilds the seam and that folding rule.
 
 ---
 
@@ -191,7 +191,7 @@ What the real llm seam adds on top of this section's Mechanism:
   prompt builder is written against its request format. Changing providers
   then means editing all three. One Message shape confines the translation
   to an adapter.
-- **A mutable message lets history be rewritten in place.** Sections 02 and
+- **A mutable message lets history be rewritten in place.** sections 02 and
   03 treat a recorded message as a fact that happened, and let compaction
   shrink what the model sees only by going through the log. A message whose
   fields can be reassigned defeats both: the record and the view drift apart
@@ -204,7 +204,7 @@ What the real llm seam adds on top of this section's Mechanism:
   loop, the log, and every observer each concatenate their own copy, and each
   can get the joins subtly wrong. One final `("message", Message)` builds the
   durable record once, at the seam.
-- **A seam defined as a base class drags the harness into every adapter.**
+- **A base-class interface couples every adapter to the harness.**
   Subclassing means a provider inherits whatever the harness's class already
   assumes, and a plain function or a closure that wraps another model no
   longer qualifies. A calling convention keeps the requirement at "yields
@@ -227,8 +227,8 @@ What the real llm seam adds on top of this section's Mechanism:
 python sections/00-setup/src/test.py   # offline check, no key
 ```
 
-The Model seam exists here, but no Mechanism drives it yet, so there is no
-`demo.py`. The first Live demo lands with the agent loop in section 04.
+The Model seam exists here, but no mechanism drives it yet, so there is no
+`demo.py`. The first live demo lands with the agent loop in section 04.
 
 ---
 

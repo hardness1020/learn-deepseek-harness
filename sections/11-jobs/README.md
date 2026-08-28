@@ -2,18 +2,18 @@
 
 English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A slow command should not hold the whole turn hostage. But work that runs
+> A slow command should not block the whole turn. But work that runs
 > off on its own belongs to nobody, so the moment its id goes out, one
 > owner holds the only stop button.
 
-Eleven sections in, every piece of work mini-dsh starts still dies
+Eleven sections in, every piece of work Mini-dsh starts still dies
 with its turn. The scheduler's contract from section 06 is strict
 about it: started work is never abandoned, and every call answers
 before the step closes. Ask the shell seam to run something slow
-and that contract holds the whole turn hostage; the model, the
+and that contract blocks the whole turn; the model, the
 inbox, and the user all wait on one command.
 
-The obvious escape is a tool body that spawns a thread and returns.
+A straightforward workaround is a tool body that spawns a thread and returns.
 But now the work belongs to nobody. The turn's abort signal points
 at a call that already returned; the thread's output has no address;
 and any session that guesses the id can read it, or kill it, or
@@ -163,7 +163,7 @@ the work finishes; the agent is idle; the watcher settles "completed"
   │  31  turn/end
 ```
 
-The log stays boundary-clean across the whole story: the job's
+The log remains consistent across the complete execution: the job's
 thread never wrote a row. Its completion entered the same way any
 input does, routed to the inbox and claimed at a boundary, so
 replay reads an ordinary transcript.
@@ -176,9 +176,8 @@ Compared with section 10:
   `capabilities.py`, `inbox.py`, `kernel.py`, `message.py`,
   `scheduler.py`, `session_log.py`, `skills.py`, `standin.py`,
   `system_prompt.py`, `tools.py`. `jobs.py` is the only new source
-  file, so the diff against 10 is this section's Mechanism,
-  nothing else.
-- The Mechanism is pure composition again: the producer consumes
+  file, so the diff against 10 contains only the mechanism introduced here.
+- The mechanism is pure composition again: the producer consumes
   the section 10 shell seam, the notices ride section 07's
   `followup()` and `inject()` presets, the controls enter through
   the section 05 registry, and the fence reuses section 05's scope
@@ -186,7 +185,7 @@ Compared with section 10:
 - The log gained no new event type. A background job's entire
   public life is ordinary rows: a `tool/result` carrying its id,
   and a `user/message` carrying its notice.
-- `demo.py`: the Live demo runs a genuinely slow command as a
+- `demo.py`: the live demo runs a genuinely slow command as a
   background job, lets the completion notice wake the real model
   in a turn it never asked for, and kills a second, quiet job in
   the same reply that started it.
@@ -210,16 +209,16 @@ The layer is the package family
 | `job_output` / `job_list` / `job_kill` | [`packages/jobs/tool-jobs/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/jobs/tool-jobs/src/index.ts) (lines 303, 343, 363, in that order) | The control tools, written once for all producers; every accessor is owner-fenced in the registry, not in the tools. |
 | `shell_job` consuming the shell seam | [`packages/shell/tool-bash/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/shell/tool-bash/src/index.ts) (lines 354-356) | The real bash tool acquires jobs by optional lookup, `ctx.get('jobs')`, not `inject`: with no registry mounted it degrades to foreground-only, and the schema keeps one tool either way. |
 
-What the real jobs layer adds on top of this section's Mechanism:
+Additional features in the production jobs layer:
 
 - **A second producer, as a peer.** `JobKindMap` names `bash` and
   `subagent`: the subagent tool's one-shot background mode hands
   its child to the same registry the bash tool uses, which is why
   the controls are written once. That producer is section 12's
-  Mechanism; continuable subagents skip jobs entirely and sit
-  above this rebuild's Ceiling.
+  mechanism; continuable subagents skip jobs entirely and are
+  outside this tutorial's scope.
 - **A kill that kills.** The real bash producer's `cancel` signals
-  a real process group; the mini's cancel is a cooperative flag
+  a real process group; Mini-dsh's cancel is a cooperative flag
   the work may check. The seam's shape and the settlement race are
   identical; only the machinery behind `cancel` is bigger.
 - **Callback delivery, no bus events.** Unlike every layer before
@@ -228,7 +227,7 @@ What the real jobs layer adds on top of this section's Mechanism:
   text the owner sees is composed in `tool-jobs`, not the
   registry.
 - **Richer snapshots.** `JobSnapshot` carries timing, output
-  cursors, and per-kind detail beyond the mini's four fields, and
+  cursors, and per-kind detail beyond Mini-dsh's four fields, and
   a `wait` accessor lets a caller block on settlement; both stay
   owner-fenced like every other accessor.
 
@@ -241,7 +240,7 @@ What the real jobs layer adds on top of this section's Mechanism:
   address and a kill switch wired to nothing; the next slow
   command backgrounds the same way and now nobody can list what is
   running. `start()` is small, but the id, the fence, and the
-  settlement it buys are the difference between background work
+  settlement it provides are the difference between background work
   and a leak.
 - **An unfenced id is a cross-session leak.** Job ids travel
   through model text, so any session can type any id. If the
@@ -255,14 +254,14 @@ What the real jobs layer adds on top of this section's Mechanism:
   outcome now needs its own tiebreak. First-wins in the registry
   settles the race once, for everyone, and `job_kill` reports the
   race's true winner.
-- **A notice appended mid-step tears the transcript.** The settling
+- **A notice appended mid-step leaves the transcript inconsistent.** The settling
   thread owns no boundary: a row written the moment work finishes
   lands between a request and its reply, claiming the model saw
   text it never received. Notices ride the inbox and enter at the
   next boundary, like every other mid-turn arrival since section
   07.
-- **A cancel that reaches into the job makes background work a
-  lie.** If the turn's abort killed published jobs, cancelling a
+- **A cancel that reaches into the job violates the background-work
+  contract.** If the turn's abort killed published jobs, cancelling a
   turn would silently destroy work the model already reported as
   started. The turn's signal ends at the scheduler; a call the
   abort catches before dispatch still answers, as a synthetic
@@ -279,7 +278,7 @@ What the real jobs layer adds on top of this section's Mechanism:
   the owner fence and first-wins settlement, the `JobOwner`
   vocabulary, and the `job_tools(owner)` plugin factory mounting
   the `shell_job` producer and the three control tools.
-- [`test.py`](src/test.py): the Offline check proves the id
+- [`test.py`](src/test.py): the offline check proves the id
   outlives its turn and the notice opens a turn of its own, a
   busy owner's notice parks until the step boundary, a foreign
   session's probes are denied without learning which ids exist,
@@ -287,7 +286,7 @@ What the real jobs layer adds on top of this section's Mechanism:
   pre-aborted background call fails instead of no-opping, both
   sides of the settlement race stay settled, and a crashing body
   settles `failed`.
-- [`demo.py`](src/demo.py): the Live demo backgrounds a genuinely
+- [`demo.py`](src/demo.py): the live demo backgrounds a genuinely
   slow command, lets the completion notice wake the real model in
   a turn it never asked for, and kills a quiet job in the reply
   that started it.
@@ -296,8 +295,8 @@ What the real jobs layer adds on top of this section's Mechanism:
 python sections/11-jobs/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it
-skips politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv

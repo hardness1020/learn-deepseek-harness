@@ -6,7 +6,7 @@ English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 > straight into the log would claim the model read words it never got, so
 > input waits between steps instead.
 
-Section 06's agent still has exactly one door. `send()` takes a
+Section 06's agent still has a single input path. `send()` takes a
 message, runs a whole turn, and returns; a second `send()` mid-turn
 raised. Everything a user says must wait for the machine to go quiet.
 
@@ -16,12 +16,12 @@ going down the wrong road. A finished background task wants to slip
 its outcome into the next request. And a genuine follow-up question
 should wait its turn, not barge into the one underway.
 
-The obvious build is to append arriving text straight into the log as
+A straightforward implementation appends arriving text directly to the log as
 a `user/message` row. But mid-step, the request in flight already
 derived its history: the new row would claim the model saw words it
 never received, and replay would rebuild a request that was never
 sent. Worse, the sender is often a tool body on a worker thread, and
-section 06 made the log single-writer. And a single list cannot say
+Section 06 made the log single-writer. And a single list cannot say
 what a message wants: to join the work underway, or to start its own.
 
 So: why two inbox targets, and why claim only at step boundaries?
@@ -171,7 +171,7 @@ Compared with section 06:
   `standin.py`, `tools.py` are carried forward verbatim. `inbox.py`
   is the only new source file; the other changes are the inbox pulled
   through `agent_loop.py`, so the diff against 06 is this section's
-  Mechanism, nothing else.
+  mechanism, nothing else.
 - `agent_loop.py`: `send()` routes through the inbox instead of
   appending `user/message` itself, and gains the `target` and
   `wakeup` parameters plus the `followup()` / `steer()` / `inject()`
@@ -181,7 +181,7 @@ Compared with section 06:
 - The log's shape changed: a `user/message` row now lands inside the
   step that claims it, after `step/start`, instead of before
   `turn/start`. Input reaches the transcript only by being claimed.
-- `demo.py`: the Live demo parks context with `inject()` while idle,
+- `demo.py`: the live demo parks context with `inject()` while idle,
   then steers and queues a follow-up mid-turn from a bus listener, so
   one send shows all three routings on a real model.
 
@@ -199,12 +199,12 @@ loop:
 | --- | --- | --- |
 | `Inbox` in `inbox.py` | [`packages/core/agent/src/inbox.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/inbox.ts): `Inbox` | Two ordered pending lists per agent; `InboxTarget = 'next-turn' \| 'next-step'` is declared in [`types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/types.ts). |
 | `claim(target)` | [`inbox.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/inbox.ts): `Inbox.claim` | Same rule: all next-step input, then one queued prompt when the boundary opens a turn. Documented as the loop's step-boundary operation, not a plugin extension point. |
-| `send(text, target, wakeup)` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `Agent.send` | The unified routing door; `followup`, `steer`, and `inject` are fixed-preset aliases, exactly the mini's three one-liners. |
+| `send(text, target, wakeup)` | [`packages/core/agent/src/runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `Agent.send` | The unified routing door; `followup`, `steer`, and `inject` are fixed-preset aliases, exactly Mini-dsh's three one-liners. |
 | the turn-close re-check | [`packages/core/agent-loop/src/agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts) | A turn closes only when a step ended with a reason and `inbox.nextStep` is empty, re-checked after the `agent/turn-stopping` serial hook gets one last chance to steer. |
 | `cancel()` emptying the inbox | [`runtime-types.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent/src/runtime-types.ts): `CancelOptions` | `cancel(cause)` clears queued and steering work unless `keepInbox` asks to preserve it; `clear()` empties next-step before next-turn. |
 | `_drain()` | [`agent.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca/packages/core/agent-loop/src/agent.ts): `kick()` | The driver drains queued work before retiring, and `running` spans consecutive queued turns; it does not prove a turn is still open. |
 
-What the real inbox adds on top of this section's Mechanism:
+Additional features in the production inbox:
 
 - **Durability.** Every mutation appends a normalized
   `agent/inbox/spliced` session event, and the live lists are a
@@ -226,8 +226,8 @@ What the real inbox adds on top of this section's Mechanism:
   latched, then replayed when the driver converges to idle. The
   mini's wake is one line, "drain if idle", safe because only the
   driving thread ever observes idle.
-- **A human on the steer button.** In real dsh, steering usually
-  arrives from the UI, which sits above the Ceiling; the mini presses
+- **User-driven steering.** In real dsh, steering usually
+  arrives from the UI, which is outside this tutorial's scope. Mini-dsh calls
   `steer()` and `followup()` from a tool body and a bus listener, and
   `inject()` from the script.
 
@@ -235,7 +235,7 @@ What the real inbox adds on top of this section's Mechanism:
 
 ## Failure modes
 
-- **Applying input the moment it arrives makes the transcript lie.**
+- **Applying input immediately makes the transcript inaccurate.**
   The request in flight already derived its history, so a row
   appended mid-step says the model saw words it never received, and
   replay rebuilds a request that was never sent. Claims land at
@@ -257,10 +257,9 @@ What the real inbox adds on top of this section's Mechanism:
   step in the same turn it aimed at.
 - **An inbox that survives cancel resurrects the cancelled work.**
   `cancel()` empties both lists before aborting, so input queued
-  before the cancel dies with the turn. Input sent after it queues
-  normally, and the drain loop picks it up: a fresh mind, not a
-  ghost.
-- **Worker threads writing user rows would race the log.** Section
+  before the cancel is discarded with the turn. Input sent after it queues
+  normally, and the drain loop treats it as new work.
+- **Worker threads writing user rows would race the log.** section
   06 made the log single-writer, and the inbox keeps it so: inserts
   are lock-guarded and memory-only, and only the driving thread turns
   claims into rows.
@@ -283,16 +282,16 @@ What the real inbox adds on top of this section's Mechanism:
   that lands during a completed step keeps the turn open for one more
   step, and a cancel drops everything pending while the next send
   starts fresh.
-- [`demo.py`](src/demo.py): the Live demo parks context while idle,
+- [`demo.py`](src/demo.py): the live demo parks context while idle,
   then steers and queues a follow-up mid-turn off the bus, and prints
-  the log's own story of all three routings.
+  the log records for all three routing paths.
 
 ```bash
 python sections/07-inbox/src/test.py    # offline check, no key
 ```
 
-The Live demo needs the root `requirements.txt` and a key; it skips
-politely without one:
+The live demo requires the root `requirements.txt` and an API key. It exits cleanly
+if no key is configured:
 
 ```bash
 pip install -r requirements.txt         # anthropic + python-dotenv
